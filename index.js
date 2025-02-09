@@ -24,8 +24,10 @@ const expireTime = 24 * 60 * 60 * 1000; //expires after 1 day  (hours * minutes 
 const mongodb_user = process.env.MONGODB_USER;
 const mongodb_password = process.env.MONGODB_PASSWORD;
 const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
-
 const node_session_secret = process.env.NODE_SESSION_SECRET;
+const mongo_cluster = process.env.MONGODB_CLUSTER;
+
+
 /* END secret section */
 
 app.set('view engine', 'ejs');
@@ -33,7 +35,7 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: false}));
 
 var mongoStore = MongoStore.create({
-	mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@cluster0.fuu9a.mongodb.net/sessions`,
+	mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongo_cluster}.mongodb.net/sessions`,
 	crypto: {
 		secret: mongodb_session_secret
 	}
@@ -99,11 +101,12 @@ app.get('/login', (req,res) => {
 
 app.post('/submitUser', async (req,res) => {
     var username = req.body.username;
+    var email = req.body.email;
     var password = req.body.password;
 
     var hashedPassword = bcrypt.hashSync(password, saltRounds);
 
-    var success = await db_users.createUser({ user: username, hashedPassword: hashedPassword });
+    var success = await db_users.createUser({ user: username, email:email ,hashedPassword: hashedPassword });
 
     if (success) {
         var results = await db_users.getUsers();
@@ -113,7 +116,6 @@ app.post('/submitUser', async (req,res) => {
     else {
         res.render("errorMessage", {error: "Failed to create user."} );
     }
-
 });
 
 app.post('/loggingin', async (req,res) => {
@@ -121,18 +123,15 @@ app.post('/loggingin', async (req,res) => {
     var password = req.body.password;
 
 
-    var results = await db_users.getUser({ user: username, hashedPassword: password });
-
-    if (results) {
-        if (results.length == 1) { //there should only be 1 user in the db that matches
-            if (bcrypt.compareSync(password, results[0].password)) {
-                req.session.authenticated = true;
-                req.session.user_type = results[0].type; 
-                req.session.username = username;
-                req.session.cookie.maxAge = expireTime;
+    var results = await db_users.getUser({ user: username });
+    if (results && results.length === 1) { // Ensure exactly 1 matching user
+        const user = results[0];
+        if (bcrypt.compareSync(password, user.password_hash)) {
+            req.session.authenticated = true;
+            req.session.username = username;
+            req.session.cookie.maxAge = expireTime;
         
-                res.redirect('/loggedIn');
-                return;
+            return res.redirect('/loggedIn');
             }
             else {
                 console.log("invalid password");
@@ -143,13 +142,13 @@ app.post('/loggingin', async (req,res) => {
             res.redirect('/login');
             return;            
         }
-    }
+    
+
 
     console.log('user not found');
     //user and password combination not found
     res.redirect("/login");
 });
-
 
 function isValidSession(req) {
 	if (req.session.authenticated) {
@@ -205,14 +204,6 @@ app.get('/loggedin/admin', (req,res) => {
 app.get('/loggedin/memberinfo', (req,res) => {
     res.render("memberInfo", {username: req.session.username, user_type: req.session.user_type});
 });
-
-
-app.get('/cat/:id', (req,res) => {
-    var cat = req.params.id;
-
-    res.render("cat", {cat: cat});
-});
-
 
 app.get('/api', (req,res) => {
 	var user = req.session.user;

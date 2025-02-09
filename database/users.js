@@ -1,76 +1,41 @@
-const database = include('databaseConnection');
+const database = include('./databaseConnection.js');
 
-async function createUser(postData) {
-	let createUserSQL = `
-		INSERT INTO user
-		(username, password)
-		VALUES
-		(:user, :passwordHash);
-	`;
+//Function to add users to the database when they register
+async function createUser(postData){
+    let createUserSQL =
+    `INSERT INTO users (user, email, password_hash)
+    VALUES (:user, :email, :password)`;
 
-	let params = {
-		user: postData.user,
-		passwordHash: postData.hashedPassword
-	}
-	
-	try {
-		const results = await database.query(createUserSQL, params);
+    let params ={
+        user: postData.user,
+        email: postData.email,
+        password: postData.hashedPassword
+    }
+    try{
+        const result = await database.query(createUserSQL, params);
 
-        console.log("Successfully created user");
-		console.log(results[0]);
-		return true;
-	}
-	catch(err) {
-		console.log("Error inserting user");
+    }
+    catch(err){
         console.log(err);
-		return false;
-	}
+        return false;
+    }
 }
 
-async function getUsers(postData) {
-	let getUsersSQL = `
-		SELECT username, password
-		FROM user;
-	`;
-	
-	try {
-		const results = await database.query(getUsersSQL);
-
-        console.log("Successfully retrieved users");
-		console.log(results[0]);
-		return results[0];
-	}
-	catch(err) {
-		console.log("Error getting users");
+async function getUser(postData){
+    let getUserSQL =`
+    SELECT user_id, user, email, password_hash
+    From users
+    WHERE user = ?`
+    ;
+    try{
+        const [rows] = await database.query(getUserSQL, [postData.user]);
+        return rows;
+    }
+    catch(err){
         console.log(err);
-		return false;
-	}
+        return false;
+    }
 }
 
-async function getUser(postData) {
-	let getUserSQL = `
-		SELECT user_id, username, password, type
-		FROM user
-		JOIN user_type USING (user_type_id)
-		WHERE username = :user;
-	`;
 
-	let params = {
-		user: postData.user
-	}
-	
-	try {
-		const results = await database.query(getUserSQL, params);
-
-        console.log("Successfully found user");
-		console.log(results[0]);
-		return results[0];
-	}
-	catch(err) {
-		console.log("Error trying to find user");
-        console.log(err);
-		return false;
-	}
-}
-
-module.exports = {createUser, getUsers, getUser};
+module.exports ={createUser, getUser};
