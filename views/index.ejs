@@ -1,6 +1,8 @@
 <%- include("templates/header") %>
 <h1>Welcome to Hiro's Messaging App</h1>
 <p>Create an account or login and start chatting!</p>
-<button onclick="window.location.href='/login'">Login</button>
-<button onclick="window.location.href='/createUser'">Register</button>
+<div class="index-button-container">
+    <button class="index-button" onclick="window.location.href='/login'">Login</button>
+    <button class="index-button" onclick="window.location.href='/createUser'">Register</button>
+</div>
 <%- include("templates/footer") %>

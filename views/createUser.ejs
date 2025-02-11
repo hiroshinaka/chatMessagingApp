@@ -1,9 +1,13 @@
 <%- include("templates/header") %> 
-    <h1>Create user</h1>
-    <form action='/submitUser' method='post'>
-    <input name='username' type='text' placeholder='username'>
-    <input name='email' type='email' placeholder='email'>
-    <input name='password' type='password' placeholder='password'>
-    <button>Submit</button>
-    </form>
+
+    <div class ="createUser-container">
+        <form class="createUser-login-form" action='/submitUser' method='post'>
+            <h1>Create user</h1>
+            <input class="createUser-login-input" name='username' type='text' placeholder='username'>
+            <input class="createUser-login-input" name='email' type='email' placeholder='email'>
+            <input class="createUser-login-input" name='password' type='password' placeholder='password'>
+            <button>Submit</button>
+            </form>
+    </div>
+
 <%- include("templates/footer") %> 
