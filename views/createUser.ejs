@@ -1,11 +1,13 @@
 <%- include("templates/header") %> 
 
     <div class ="createUser-container">
-        <form class="createUser-login-form" action='/submitUser' method='post'>
+        <form class="createUser-login-form" action='/submitUser' method='post' enctype="multipart/form-data">
             <h1>Create user</h1>
-            <input class="createUser-login-input" name='username' type='text' placeholder='username'>
-            <input class="createUser-login-input" name='email' type='email' placeholder='email'>
-            <input class="createUser-login-input" name='password' type='password' placeholder='password'>
+            <input class="createUser-login-input" name='username' type='text' placeholder='username' required>
+            <input class="createUser-login-input" name='email' type='email' placeholder='email' required>
+            <input class="createUser-login-input" name='password' type='password' placeholder='password' required>
+            <label for="profile_img" class="upload-label">Upload Profile Image</label>
+            <input class="createUser-login-input file-input" name='profile_img' type='file' accept="image/*">         
             <button>Submit</button>
             </form>
     </div>

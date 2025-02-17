@@ -1,0 +1,287 @@
+<%- include("templates/header") %>
+
+<div class="messenger-container">
+    <!-- Left Sidebar - Chats List -->
+    <div class="chat-list">
+        <h2>Chats</h2>
+        <button id="composeButton">+ New Chat</button>
+        <!-- In chat.ejs -->
+        <ul id="conversation-list">
+            <% chatList.forEach(chat => { %>
+                <li class="chat-item" onclick="openChat('<%= chat.room_id %>', '<%= chat.type %>')">
+                    <img src="<%= chat.type === 'group' ? '/group-avatar.png' : (chat.profile_img || '/default-avatar.png') %>" class="avatar">
+                    <div class="chat-info">
+                        <strong><%= chat.chat_name %></strong>
+                        <% if (chat.unread_count > 0) { %>
+                            <span class="unread-badge"><%= chat.unread_count %></span>
+                        <% } %>
+                    </div>
+                </li>
+            <% }); %>
+        </ul>
+    </div>
+
+    <!-- Chat Window -->
+    <div class="chat-window">
+        <div class="chat-header">
+            <span id="chat-username">Select a chat</span>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+            <input id="message" autocomplete="off" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Chat Creation Modal -->
+    <div id="createChatModal" class="modal">
+        <div class="modal-content">
+            <h2>Create New Chat</h2>
+
+            <!-- Group Name Section (Hidden by default) -->
+            <div id="groupNameSection" style="display: none;">
+                <label for="chatNameInput">Group Name (for 2+ users):</label>
+                <input id="chatNameInput" type="text" placeholder="Enter group name" />
+            </div>
+
+            <ul id="userSelectionList">
+                <% allUsers.forEach(user => { %>
+                    <li>
+                        <label>
+                            <input 
+                                type="checkbox" 
+                                class="user-checkbox" 
+                                value="<%= user.user_id %>"
+                                onchange="toggleGroupName()"
+                            />
+                            <span><%= user.username %></span>
+                        </label>
+                    </li>
+                <% }); %>
+            </ul>
+
+            <button onclick="createChat()">Create Chat</button>
+            <button onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar - Chat Details & Members -->
+    <div class="chat-info-panel">
+        <h3>Logged in as</h3>
+        <img id="chat-avatar-large" src="<%= profile_img %>" class="avatar-large" alt="User Avatar">        
+        <p id="chat-username-large"><%= username %></p>
+        <p id="active-status">Active now</p>
+        
+        <h4>Members</h4>
+        <ul id="group-members-list"></ul>
+        <form action="/logout" method="POST">
+            <button type="submit" class="logout-button">Log Out</button>
+        </form>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentChat = null;
+    let isGroupChat = false;
+    let currentChatId = null;
+    const username = "<%= username %>";
+
+    /* ===========================
+       Opening an existing chat
+    =========================== */
+    function openChat(chatId, chatType) {
+        console.log("Chat Clicked:", chatId, chatType); // Debugging log
+
+        if (!chatId || chatId.trim() === "") {
+            console.error("Invalid chat parameters:", chatId, chatType);
+            alert("Error: Invalid chat selected. Please try again.");
+            return;
+        }
+
+        isGroupChat = (chatType === 'group');
+        currentChatId = chatId;
+
+        document.getElementById("chat-messages").innerHTML = "";
+        document.getElementById("group-members-list").innerHTML = ""; 
+
+        fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log("API Response:", data); // Debugging log
+
+                if (!data.messages || !Array.isArray(data.messages)) {
+                    console.error("Error: 'messages' field is missing or invalid in response", data);
+                    return;
+                }
+                
+                const messagesDiv = document.getElementById("chat-messages");
+                // In the openChat function:
+                data.messages.forEach(msg => {
+                    const li = document.createElement("div");
+                    li.className = msg.sender === username ? "my-message" : "other-message";
+                    li.dataset.messageId = msg.message_id;  
+                    li.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+                    messagesDiv.appendChild(li);
+                });
+
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                updateLastRead();  
+
+                if (isGroupChat) {
+                    fetch(`/getGroupMembers?groupId=${chatId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log("Group Members API Response:", data); // Debugging log
+                            document.getElementById("chat-username").textContent = data.group_name;
+                            const membersList = document.getElementById("group-members-list");
+                            membersList.innerHTML = ""; // Clear previous members
+
+                            if (data.success && Array.isArray(data.members)) {
+                                data.members.forEach(member => {
+                                    const memberItem = document.createElement("li");
+                                    memberItem.innerHTML = `
+                                        <img src="${member.profile_img || '/default-avatar.png'}" class="avatar-small">
+                                        ${member.username}
+                                    `;
+                                    membersList.appendChild(memberItem);
+                                });
+                            } else {
+                                console.error("Error: Invalid group members response", data);
+                            }
+                        })
+                        .catch(error => console.error("Error fetching group members:", error));
+                }
+            })
+            .catch(error => console.error("Error fetching messages:", error));
+        
+    }
+
+
+    /* ===========================
+       Socket.io Handling
+    =========================== */
+    socket.on('receiveMessage', (msg) => {
+        displayMessage(msg);
+    });
+
+    function displayMessage(msg) {
+        const messagesDiv = document.getElementById("chat-messages");
+        const li = document.createElement('div');
+        li.className = msg.sender === username ? "my-message" : "other-message";
+        li.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+        messagesDiv.appendChild(li);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        updateLastRead();
+    }
+
+    function sendMessage() {
+        if (!currentChatId) return;
+        const messageInput = document.getElementById('message');
+        const msgText = messageInput.value.trim();
+        if (!msgText) return;
+
+        // Send the message via Socket.io with required data
+        socket.emit('sendMessage', {
+            room_id: currentChatId,
+            text: msgText
+        });
+        const messages = document.querySelectorAll('.my-message, .other-message');
+        if (messages.length > 0) {
+            const lastMessageId = messages[messages.length - 1].dataset.messageId;
+            updateLastRead();
+        }
+        messageInput.value = '';
+    }
+
+    function updateLastRead() {
+        const messages = document.querySelectorAll('.my-message, .other-message');        
+        if (messages.length > 0) {
+            const lastMessageId = messages[messages.length - 1].dataset.messageId;
+            fetch('/updateLastRead', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    room_id: currentChatId,
+                    last_message_id: lastMessageId
+                })
+            });
+        }
+    }
+
+    /* ===========================
+       Modal Logic
+    =========================== */
+    // Show the modal on "New Chat" click
+    document.getElementById("composeButton").addEventListener("click", () => {
+        document.getElementById("createChatModal").style.display = "flex";
+    });
+
+    function closeModal() {
+        document.getElementById("createChatModal").style.display = "none";
+    }
+
+    // Toggle group name field if >1 user is selected
+    function toggleGroupName() {
+        const checkboxes = document.querySelectorAll(".user-checkbox:checked");
+        const groupNameSection = document.getElementById("groupNameSection");
+
+        if (checkboxes.length > 1) {
+            groupNameSection.style.display = "block";
+        } else {
+            groupNameSection.style.display = "none";
+        }
+    }
+
+    function createChat() {
+        const checkboxes = document.querySelectorAll(".user-checkbox:checked");
+        const selectedUsers = Array.from(checkboxes).map(cb => cb.value);
+
+        if (selectedUsers.length === 0) {
+            alert("Please select at least one user.");
+            return;
+        }
+
+        // If multiple users are selected, we require a group name
+        // If exactly 1 user is selected, hide group name field
+        const groupNameInput = document.getElementById("chatNameInput");
+        let chatName = groupNameInput.value.trim();
+
+        // If only 1 user is selected, we ignore chatName => server can default to private chat
+        if (selectedUsers.length === 1) {
+            chatName = ""; // Force empty name => private chat
+        } else {
+            // If 2 or more users selected but no name => prompt
+            if (!chatName) {
+                alert("Please enter a group name for 2 or more users.");
+                return;
+            }
+        }
+
+        const requestBody = chatName
+            ? { room_name: chatName, user_ids: selectedUsers }
+            : { user_ids: selectedUsers };
+
+        console.log("Sending request to create chat:", requestBody);
+
+        fetch("/createRoom", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Server response:", data);
+            if (data.success) {
+                alert("Chat created successfully!");
+                location.reload();
+            } else {
+                alert("Error creating chat: " + data.message);
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+</script>
+
+<%- include("templates/footer") %>

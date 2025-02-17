@@ -1,56 +1,70 @@
+/* ======== GLOBAL STYLES ======== */
 body {
-    background-color: #000000;
+    background: #181818;
+    color: #e0e0e0;
     font-family: 'Roboto', sans-serif;
     font-size: 16px;
     line-height: 1.5;
-    color: #ffffff;
-    text-align: center;
-    margin: 0; 
-
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow-x: hidden;
 }
 
+/* ======== BUTTON STYLES ======== */
 button {
-    background-color: #ffffff;
+    background-color: #fbfbfb;
     border: none;
-    color: #000000;
-    padding: 15px;
+    color: rgb(0, 0, 0);
+    padding: 12px 20px;
     font-size: 16px;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition: background 0.3s;
 }
 
 button:hover {
-    background-color: #ddd;
-    color: #000;
-    cursor: pointer;
+    background-color: #676869;
 }
 
-/*Index css*/
+/* ======== INDEX PAGE STYLES ======== */
 .index-button-container {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    gap: 20px; 
-    margin-top: 20px; 
+    justify-content: center;
+    height: 100vh; /* Ensures it takes up full screen */
+    gap: 15px;
 }
 
 .index-button {
     background-color: #ffffff;
-    color: #000000;
+    color: rgb(0, 0, 0);
     border: none;
     padding: 15px 30px;
     font-size: 18px;
     border-radius: 10px;
     cursor: pointer;
     transition: background 0.3s;
+    width: 250px;
+    text-align: center;
+}
+.index-image{
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+    border: 5px solid #0084ff;
+
 }
 
 .index-button:hover {
-    background-color: #ddd;
-    color: #000;
+    background-color: #676869;
 }
-/*Create user css*/
+
+/* ======== CREATE USER PAGE STYLES ======== */
 .createUser-container {
     display: flex;
     justify-content: center;
@@ -100,5 +114,504 @@ input, button {
     font-size: 16px;
     border-radius: 5px;
     border: 1px solid #ccc;
+}
+
+
+/* Chat*/
+/* ======== DARK MODE CHAT PAGE ======== */
+.messenger-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+/* ============ CHAT LIST (LEFT SIDEBAR) ============ */
+.chat-list {
+    width: 25%;
+    background: #202020;
+    padding: 15px;
+    border-right: 1px solid #303030;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-list h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #e0e0e0;
+}
+
+#conversation-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.3s;
+    background: #252525;
+    margin-bottom: 5px;
+}
+
+.chat-item:hover, .chat-item.active-chat {
+    background: #303030;
+}
+
+.chat-item img.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.chat-item .chat-info {
+    flex-grow: 1;
+}
+
+.chat-item .chat-info strong {
+    font-size: 16px;
+    color: #ffffff;
+}
+
+/* ======== CHAT WINDOW (MESSAGES) ======== */
+.chat-window {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background: #181818;
+}
+
+/* ====== CHAT HEADER ====== */
+.chat-header {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #202020;
+    border-bottom: 1px solid #303030;
+}
+
+.chat-header img.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+#chat-username {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* ====== CHAT MESSAGES ====== */
+.chat-messages {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: #181818;
+}
+
+
+.timestamp {
+    font-size: 10px;
+    opacity: 0.7;
+    display: block;
+    margin-top: 3px;
+    text-align: right;
+}
+.my-message {
+    align-self: flex-end; /* right side */
+    background: #0084ff;
+    color: #fff;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 5px 0;
+    max-width: 60%;
+}
+
+.other-message {
+    align-self: flex-start; /* left side */
+    background: #252525;
+    color: #e0e0e0;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 5px 0;
+    max-width: 60%;
+}
+  
+
+/* ======== CHAT INPUT ======== */
+.chat-input {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-top: 1px solid #303030;
+    background: #202020;
+}
+
+.chat-input input {
+    flex-grow: 1;
+    padding: 10px;
+    border-radius: 18px;
+    border: 1px solid #303030;
+    background: #252525;
+    color: white;
+}
+
+.chat-input input::placeholder {
+    color: #b0b0b0;
+}
+
+.chat-input button {
+    background: #0084ff;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 18px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.chat-input button:hover {
+    background: #0073e6;
+}
+
+/* ======== CHAT INFO PANEL (RIGHT SIDEBAR) ======== */
+.chat-info-panel {
+    width: 25%;
+    background: #202020;
+    padding: 20px;
+    border-left: 1px solid #303030;
+    text-align: center;
+    position: relative;
+    
+}
+
+.chat-info-panel h3 {
+    font-size: 18px;
+    color: #e0e0e0;
+    margin-bottom: 15px;
+}
+
+.chat-info-panel img.avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+#active-status {
+    font-size: 14px;
+    color: #57D38C;
+    font-weight: bold;
+}
+.avatar-small{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.chat-info-panel ul {
+    list-style-type: none;
+}
+.logout-button {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+
+
+/* ======== MODAL FOR CREATING NEW CHAT ======== */
+.modal {
+    display: none; /* hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #202020;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    text-align: center;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.modal h2 {
+    font-size: 20px;
+    color: white;
+    margin-bottom: 15px;
+}
+
+.modal input {
+    width: 90%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #303030;
+    border-radius: 5px;
+    background: #252525;
+    color: white;
+}
+
+.modal ul {
+    list-style: none;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #252525;
+    border-radius: 5px;
+}
+
+.modal ul li {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #303030;
+    color: white;
+}
+
+.modal button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.modal button:first-child {
+    background-color: #0084ff;
+    color: white;
+}
+
+.modal button:first-child:hover {
+    background-color: #0073e6;
+}
+
+.modal button:last-child {
+    background-color: #404040;
+    color: white;
+}
+
+.modal button:last-child:hover {
+    background-color: #303030;
+}
+
+/* ============ COMPOSE BUTTON STYLE ============ */
+#composeButton {
+    width: 90%;
+    padding: 10px;
+    background: #0084ff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 10px auto;
+    display: block;
+    font-weight: bold;
+    text-align: center;
+    transition: background 0.3s;
+}
+
+#composeButton:hover {
+    background: #0073e6;
+}
+
+/* ============ GLOBAL STYLES FOR MOBILE ============ */
+@media screen and (max-width: 768px) {
+    body {
+        font-size: 14px;
+        overflow: hidden;
+    }
+
+    .messenger-container {
+        flex-direction: column;
+        height: 100vh;
+        width: 100%;
+    }
+
+    /* ============ CHAT LIST (LEFT SIDEBAR) ============ */
+    .chat-list {
+        width: 100%;
+        height: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid #303030;
+    }
+
+    .chat-list h2 {
+        display: none; /* Hide text title on mobile */
+    }
+
+    #conversation-list {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        overflow-x: auto;
+        white-space: nowrap;
+        width: 100%;
+    }
+
+    .chat-item {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        padding: 8px;
+        background: #252525;
+    }
+
+    .chat-item img.avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .chat-item .chat-info {
+        display: none;
+    }
+
+    /* ============ CHAT WINDOW (MESSAGES) ============ */
+    .chat-window {
+        width: 100%;
+        height: calc(100vh - 120px);
+    }
+
+    .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    #chat-username {
+        font-size: 16px;
+    }
+
+    .chat-messages {
+        height: calc(100vh - 180px);
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    .chat-input {
+        display: flex;
+        flex-direction: row;
+        padding: 8px;
+    }
+
+    .chat-input input {
+        flex-grow: 1;
+        padding: 8px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .chat-input button {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    /* ============ CHAT INFO PANEL (HIDE ON MOBILE) ============ */
+    .chat-info-panel {
+        display: none;
+    }
+
+    /* ============ MODAL STYLES FOR MOBILE ============ */
+    .modal {
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        width: 90%;
+        max-width: 350px;
+        padding: 15px;
+    }
+
+    .modal h2 {
+        font-size: 18px;
+    }
+
+    .modal input {
+        font-size: 14px;
+    }
+
+    .modal button {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    /* ============ COMPOSE BUTTON STYLES ============ */
+    #composeButton {
+        width: 100%;
+        font-size: 14px;
+        padding: 8px;
+        text-align: center;
+    }
+}
+
+
+/* ========STYLES FOR MOBILE ======== */
+@media screen and (max-width: 768px) {
+    .chat-list {
+        justify-content: space-between;
+    }
+
+    .chat-item {
+        width: 45px;
+        height: 45px;
+    }
+
+    .chat-item img.avatar {
+        width: 35px;
+        height: 35px;
+    }
+
+    .chat-window {
+        width: 100%;
+    }
+
+    .chat-messages {
+        height: calc(100vh - 140px);
+    }
+
+    .chat-input input {
+        font-size: 12px;
+    }
+
+    .chat-input button {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
 }
 

@@ -7,7 +7,10 @@ const dbConfig = {
 	password: process.env.MYSQL_PASSWORD,
 	database: process.env.MYSQL_DATABASE,
 	multipleStatements: false,
-	namedPlaceholders: true
+	namedPlaceholders: true,
+	waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 };
 
 var database = mysql.createPool(dbConfig);
