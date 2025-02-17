@@ -576,38 +576,46 @@ app.get('/:username/chat', async (req, res) => {
         // Fetch all chats (private & group)
         const [chatList] = await database.query(`
             SELECT
-              r.room_id,
-              ru2.user_id,
-              u.username AS chat_name,
-              u.profile_img,
-              'user' AS type
+                r.room_id,
+                ru2.user_id,
+                u.username AS chat_name,
+                u.profile_img,
+                'user' AS type,
+                (SELECT COUNT(*) 
+                FROM message m
+                JOIN room_user ru ON m.room_user_id = ru.room_user_id
+                WHERE ru.room_id = r.room_id
+                AND m.message_id > (SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id)
+                ) AS unread_count
             FROM room r
             JOIN room_user ru1 ON r.room_id = ru1.room_id
             JOIN room_user ru2 ON r.room_id = ru2.room_id
             JOIN user u ON ru2.user_id = u.user_id
             WHERE ru1.user_id = ?
-              AND ru2.user_id != ?
-              AND (
-                SELECT COUNT(DISTINCT ruX.user_id)
-                FROM room_user ruX
-                WHERE ruX.room_id = r.room_id
-              ) = 2
-          
+            AND ru2.user_id != ?
+            AND (SELECT COUNT(DISTINCT ruX.user_id) FROM room_user ruX WHERE ruX.room_id = r.room_id) = 2
+            
             UNION
-          
+            
             SELECT
-              r.room_id,
-              NULL          AS user_id,
-              r.name        AS chat_name,
-              '/group-avatar.png' AS profile_img,
-              'group'       AS type
+                r.room_id,
+                NULL AS user_id,
+                r.name AS chat_name,
+                '/group-avatar.png' AS profile_img,
+                'group' AS type,
+                (SELECT COUNT(*) 
+                FROM message m
+                JOIN room_user ru ON m.room_user_id = ru.room_user_id
+                WHERE ru.room_id = r.room_id
+                AND m.message_id > (SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id)
+                ) AS unread_count
             FROM room r
             JOIN room_user ru ON r.room_id = ru.room_id
             WHERE ru.user_id = ?
-              AND r.name IS NOT NULL
-              AND r.name NOT LIKE 'private_%'
-          `, [currentUserId, currentUserId, currentUserId]);
-          
+            AND r.name IS NOT NULL
+            AND r.name NOT LIKE 'private_%'
+        `, [currentUserId, currentUserId, currentUserId, currentUserId, currentUserId]);
+                
 
         console.log("Chat List Data:", chatList); // Debugging log
 

@@ -8,7 +8,9 @@
         <!-- In chat.ejs -->
         <ul id="conversation-list">
             <% chatList.forEach(chat => { %>
-                <li class="chat-item" onclick="openChat('<%= chat.room_id %>', '<%= chat.type %>')">
+                <li class="chat-item <%= chat.unread_count > 0 ? 'unread' : '' %>" 
+                    data-room-id="<%= chat.room_id %>"
+                    onclick="openChat('<%= chat.room_id %>', '<%= chat.type %>')">
                     <img src="<%= chat.type === 'group' ? '/group-avatar.png' : (chat.profile_img || '/default-avatar.png') %>" class="avatar">
                     <div class="chat-info">
                         <strong><%= chat.chat_name %></strong>
@@ -155,6 +157,12 @@
                 }
             })
             .catch(error => console.error("Error fetching messages:", error));
+        const chatItem = document.querySelector(`.chat-item[data-room-id="${chatId}"]`);
+        if (chatItem) {
+            chatItem.classList.remove('unread');
+            const badge = chatItem.querySelector('.unread-badge');
+            if (badge) badge.remove();
+        }
         
     }
 
@@ -162,8 +170,18 @@
     /* ===========================
        Socket.io Handling
     =========================== */
+    // In your client-side script
     socket.on('receiveMessage', (msg) => {
         displayMessage(msg);
+        
+        // Update chat list unread count
+        const chatItem = document.querySelector(`.chat-item[data-room-id="${msg.room_id}"]`);
+        if (chatItem && chatItem !== document.querySelector('.active-chat')) {
+            const badge = chatItem.querySelector('.unread-badge');
+            const currentCount = parseInt(badge?.textContent || 0);
+            badge.textContent = currentCount + 1;
+            chatItem.classList.add('unread');
+        }
     });
 
     function displayMessage(msg) {
