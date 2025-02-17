@@ -4,7 +4,7 @@ const db = require('../databaseConnection');
 
 //Send a message
 router.post('send', async (req, res) => {
-    const {room_user_idm text} = req.body;
+    const {room_user_idm, text} = req.body;
     try{
         await db.query('INSERT INTO messages (room_user_id, text) VALUES (?, ?, NOW())', [room_user_id, text]);
         res.status(201).json({ success: true, message: "Message sent!" });
