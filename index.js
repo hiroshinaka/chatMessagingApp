@@ -1,6 +1,7 @@
 require('./utils');
 require('dotenv').config();
 
+
 const express = require('express');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
@@ -10,6 +11,8 @@ const saltRounds = 12;
 const database = include('databaseConnection');
 const db_utils = include('database/db_utils');
 const db_users = include('database/users');
+const db_rooms = include('database/rooms');
+const db_messages = include('database/messages');
 const success = db_utils.printMySQLVersion();
 
 const port = process.env.PORT || 3000;
@@ -143,10 +146,6 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
-
-
-
-
 // app.use(session({ 
 //     secret: node_session_secret,
 // 	store: mongoStore, //default is memory store 
@@ -176,32 +175,18 @@ app.get('/contact', (req,res) => {
 app.get('/getMessages', async (req, res) => {
     try {
         const { chatId } = req.query;
-        const [userResult] = await database.query(
-            "SELECT user_id FROM user WHERE username = ?",
-            [req.session.username]
-        );
+
+        // Get the current user's ID based on session username
+        const userResult = await db_messages.getUserIdByUsername(req.session.username);
         const user_id = userResult[0].user_id;
 
-        // Get last_read message ID
-        const [lastReadRow] = await database.query(
-            `SELECT last_read FROM room_user 
-             WHERE user_id = ? AND room_id = ?`,
-            [user_id, chatId]
-        );
-        const last_read_id = lastReadRow[0]?.last_read || 0;
+        // Get the last_read message ID for this chat
+        const lastReadRows = await db_messages.getLastReadMessage(user_id, chatId);
+        const last_read_id = lastReadRows[0]?.last_read || 0;
 
-        // Modified query using message IDs
-        const query = `
-            SELECT m.*, u.username AS sender,
-                   (m.message_id > ?) AS is_unread
-            FROM message m
-            JOIN room_user ru ON m.room_user_id = ru.room_user_id
-            JOIN user u ON ru.user_id = u.user_id
-            WHERE ru.room_id = ?
-            ORDER BY sent_datetime ASC
-        `;
-        
-        const [messages] = await database.query(query, [last_read_id, chatId]);
+        // Fetch messages for the chat using the last read message ID
+        const messages = await db_messages.getMessages(last_read_id, chatId);
+
         res.json({ messages });
     } catch (error) {
         console.error("Error fetching messages:", error);
@@ -218,30 +203,23 @@ app.get('/getGroupMembers', async (req, res) => {
       }
   
       // 1. Fetch group name from "room" table
-      const [roomRows] = await database.query(
-        "SELECT name AS group_name FROM room WHERE room_id = ?",
-        [groupId]
-      );
-      let groupName = "Group Chat"; // default
+      const roomRows = await db_rooms.getRoomGroupName(groupId);
+      let groupName = "Group Chat"; // default value
       if (roomRows.length > 0 && roomRows[0].group_name) {
-        groupName = roomRows[0].group_name;
+          groupName = roomRows[0].group_name;
       }
   
-      // 2. Fetch group members
-      const [members] = await database.query(`
-        SELECT u.user_id, u.username, u.profile_img
-        FROM user u
-        JOIN room_user ru ON u.user_id = ru.user_id
-        WHERE ru.room_id = ?
-      `, [groupId]);
+      // 2. Fetch group members from the user and room_user tables
+      const members = await db_rooms.getGroupMembers(groupId);
     
-        if (members.length == 2){
-            const currentUserId = req.session.currentUserId;
-            const other = members.find(member => member.user_id !== currentUserId);
-            if (other) {
-                groupName = other.username;
-            }
-        }
+      // If it's a private chat (i.e. 2 members), update the group name to the other user's username.
+      if (members.length === 2) {
+          const currentUserId = req.session.currentUserId;
+          const other = members.find(member => member.user_id !== currentUserId);
+          if (other) {
+              groupName = other.username;
+          }
+      }
       res.json({ success: true, group_name: groupName, members });
     } catch (error) {
       console.error("Error fetching group members:", error);
@@ -251,18 +229,18 @@ app.get('/getGroupMembers', async (req, res) => {
   
   
 
-app.get('/createTables', async (req,res) => {
+// app.get('/createTables', async (req,res) => {
 
-    const create_tables = include('database/create_tables');
+//     const create_tables = include('database/create_tables');
 
-    var success = create_tables.createTables();
-    if (success) {
-        res.render("successMessage", {message: "Created tables."} );
-    }
-    else {
-        res.render("errorMessage", {error: "Failed to create tables."} );
-    }
-});
+//     var success = create_tables.createTables();
+//     if (success) {
+//         res.render("successMessage", {message: "Created tables."} );
+//     }
+//     else {
+//         res.render("errorMessage", {error: "Failed to create tables."} );
+//     }
+// });
 
 app.get('/createUser', (req,res) => {
     res.render("createUser");
@@ -294,14 +272,11 @@ app.post('/createRoom', async (req, res) => {
         }
 
         // 1. Get current user's ID from session
-        const [userResult] = await database.query(
-            "SELECT user_id FROM user WHERE username = ?",
-            [req.session.username]
-        );
-        if (userResult.length === 0) {
+        const userRows = await db_rooms.getUserIdByUsername(req.session.username);
+        if (userRows.length === 0) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
-        const currentUserId = userResult[0].user_id;
+        const currentUserId = userRows[0].user_id;
 
         // 2. Check if we're creating a private chat
         // Updated private chat logic in /createRoom
@@ -312,10 +287,7 @@ app.post('/createRoom', async (req, res) => {
             const roomName = `private_${lowestId}_${highestId}`;
 
             // Check for existing private chat using the standardized name
-            const [existingRoom] = await database.query(
-                "SELECT room_id FROM room WHERE name = ?",
-                [roomName]
-            );
+            const existingRoom = await db_rooms.getExistingPrivateRoom(privateRoomName);
             if (existingRoom.length > 0) {
                 return res.json({ success: true, room_id: existingRoom[0].room_id });
             }
@@ -325,49 +297,31 @@ app.post('/createRoom', async (req, res) => {
                 "INSERT INTO room (name, start_datetime) VALUES (?, NOW())",
                 [roomName]
             );
-            const roomId = roomResult.insertId;
+            const roomId = await db_rooms.createRoom(privateRoomName);
 
             // Insert both users
-            await database.query(
-                "INSERT INTO room_user (user_id, room_id, last_read) VALUES (?, ?, NULL), (?, ?, NULL)",
-                [currentUserId, roomId, otherUserId, roomId]
-            );
-
+            await db_rooms.addRoomUsers(roomId, [
+                [currentUserId, roomId, null],
+                [otherUserId, roomId, null]
+            ]);
             return res.json({ success: true, message: "Private chat created", room_id: roomId });
-        }
-                
-        else {
+        } else {
             // Group chat logic
             const participants = [...new Set([...user_ids, currentUserId.toString()])];
 
             // Check for existing group with same participants
-            const [existingGroup] = await database.query(
-                `SELECT room_id 
-                FROM room_user 
-                WHERE user_id IN (?)
-                GROUP BY room_id
-                HAVING COUNT(DISTINCT user_id) = ?`,
-                [participants, participants.length]
-            );
-
+            const existingGroup = await db_rooms.getExistingGroupRoom(participants);
             if (existingGroup.length > 0) {
                 return res.json({ success: true, room_id: existingGroup[0].room_id });
             }
 
             // Create new group with provided name or default name
             const groupName = room_name || `Group ${Date.now()}`;
-            const [roomResult] = await database.query(
-                "INSERT INTO room (name, start_datetime) VALUES (?, NOW())",
-                [groupName]
-            );
-            const roomId = roomResult.insertId;
+            const roomId = await db_rooms.createRoom(groupName);
 
             // Insert all participants
-            const values = participants.map(user_id => [user_id, roomId, NULL]);         
-            await database.query(
-                "INSERT INTO room_user (user_id, room_id, last_read) VALUES ?",
-                [values]
-            );
+            const values = participants.map(user_id => [user_id, roomId, null]);
+            await db_rooms.addRoomUsers(roomId, values);
 
             return res.json({ success: true, message: "Group chat created", room_id: roomId });
         }
@@ -376,6 +330,7 @@ app.post('/createRoom', async (req, res) => {
         res.status(500).json({ success: false, message: "Server error." });
     }
 });
+
 app.get('/login', (req,res) => {
     res.render("login");
 });
@@ -556,121 +511,32 @@ app.get('/:username/chat', async (req, res) => {
     try {
         if (!req.session.username) return res.redirect('/login');
 
-        const [userResult] = await database.query(
-            "SELECT user_id FROM user WHERE username = ?",
-            [req.session.username]
-        );
+        const userResult = await db_users.getUserByUsername(req.session.username);
+        if (userResult.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
         if (userResult.length === 0) {
             return res.status(404).json({ error: "User not found" });
         }
         const currentUserId = userResult[0].user_id;
         const profile_img = userResult[0].profile_img || '/default-avatar.png';
-        console.log(profile_img);
+        console.log("Profile Image:", profile_img);
 
         // Fetch all users for the "Create Chat" modal
-        const [allUsers] = await database.query(
-            "SELECT user_id, username FROM user WHERE user_id != ?",
-            [currentUserId]
-        );
-
-        // Fetch all chats (private & group)
-        const [chatList] = await database.query(`
-            SELECT
-                r.room_id,
-                ru2.user_id,
-                u.username AS chat_name,
-                u.profile_img,
-                'user' AS type,
-                (SELECT COUNT(*) 
-                FROM message m
-                JOIN room_user ru ON m.room_user_id = ru.room_user_id
-                WHERE ru.room_id = r.room_id
-                AND m.message_id > (SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id)
-                ) AS unread_count
-            FROM room r
-            JOIN room_user ru1 ON r.room_id = ru1.room_id
-            JOIN room_user ru2 ON r.room_id = ru2.room_id
-            JOIN user u ON ru2.user_id = u.user_id
-            WHERE ru1.user_id = ?
-            AND ru2.user_id != ?
-            AND (SELECT COUNT(DISTINCT ruX.user_id) FROM room_user ruX WHERE ruX.room_id = r.room_id) = 2
-            
-            UNION
-            
-            SELECT
-                r.room_id,
-                NULL AS user_id,
-                r.name AS chat_name,
-                '/group-avatar.png' AS profile_img,
-                'group' AS type,
-                (SELECT COUNT(*) 
-                FROM message m
-                JOIN room_user ru ON m.room_user_id = ru.room_user_id
-                WHERE ru.room_id = r.room_id
-                AND m.message_id > (SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id)
-                ) AS unread_count
-            FROM room r
-            JOIN room_user ru ON r.room_id = ru.room_id
-            WHERE ru.user_id = ?
-            AND r.name IS NOT NULL
-            AND r.name NOT LIKE 'private_%'
-        `, [currentUserId, currentUserId, currentUserId, currentUserId, currentUserId]);
-                
-
-        console.log("Chat List Data:", chatList); // Debugging log
-
+        const allUsers = await db_users.getAllUsers(currentUserId);
+        const chatList = await db_users.getChatList(currentUserId);
+        console.log("Chat List Data:", chatList);
+        
         res.render('chat', {
             username: req.session.username,
             profile_img,
-            allUsers,  // List of all users
-            chatList   // List of chats (users & groups)
+            allUsers,  
+            chatList   
         });
     } catch (error) {
         console.error("Error fetching chat data:", error);
         res.status(500).json({ error: "Database error" });
     }
-});
-app.get('/api', (req,res) => {
-	var user = req.session.user;
-    var user_type = req.session.user_type;
-	console.log("api hit ");
-
-	var jsonResponse = {
-		success: false,
-		data: null,
-		date: new Date()
-	};
-
-	
-	if (!isValidSession(req)) {
-		jsonResponse.success = false;
-		res.status(401);  //401 == bad user
-		res.json(jsonResponse);
-		return;
-	}
-
-	if (typeof id === 'undefined') {
-		jsonResponse.success = true;
-		if (user_type === "admin") {
-			jsonResponse.data = ["A","B","C","D"];
-		}
-		else {
-			jsonResponse.data = ["A","B"];
-		}
-	}
-	else {
-		if (!isAdmin(req)) {
-			jsonResponse.success = false;
-			res.status(403);  //403 == good user, but, user should not have access
-			res.json(jsonResponse);
-			return;
-		}
-		jsonResponse.success = true;
-		jsonResponse.data = [id + " - details"];
-	}
-
-	res.json(jsonResponse);
-
 });
 
 app.use(express.static(__dirname + "/public"));
@@ -682,4 +548,4 @@ app.get("*", (req,res) => {
 
 server.listen(port, () => {
 	console.log("Node application listening on port "+port);
-}); 
+});

@@ -2,9 +2,16 @@
 
 <div class="messenger-container">
     <!-- Left Sidebar - Chats List -->
+    
     <div class="chat-list">
         <h2>Chats</h2>
-        <button id="composeButton">+ New Chat</button>
+        <button id="composeButton">
+                <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g id="SVGRepo_bgCarrier" stroke-width="0"/>
+                <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+                <g id="SVGRepo_iconCarrier"> <path d="M12 7H6.5C5.67157 7 5 7.67157 5 8.5V17.5C5 18.3284 5.67157 19 6.5 19H15.5C16.3284 19 17 18.3284 17 17.5V13" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/> <path fill-rule="evenodd" clip-rule="evenodd" d="M19.1888 6.725V6.725C19.5892 6.34461 19.6054 5.71165 19.225 5.31125V5.31125C18.8446 4.91084 18.2117 4.89461 17.8113 5.275V5.275L17.6171 5.45948C17.2094 5.84678 17.2011 6.49397 17.5987 6.89159V6.89159C17.9822 7.27505 18.6014 7.28299 18.9946 6.90948L19.1888 6.725ZM16.8372 7.5443C17.2348 7.94193 17.2265 8.58911 16.8188 8.97641L9.18875 16.225V16.225C8.78835 16.6054 8.15539 16.5892 7.775 16.1887V16.1887C7.39462 15.7883 7.41085 15.1554 7.81125 14.775V14.775L15.4413 7.52641C15.8345 7.1529 16.4537 7.16084 16.8372 7.5443V7.5443Z" fill="#ffffff"/> </g>
+                </svg>
+        </button>
         <!-- In chat.ejs -->
         <ul id="conversation-list">
             <% chatList.forEach(chat => { %>
@@ -14,6 +21,7 @@
                     <img src="<%= chat.type === 'group' ? '/group-avatar.png' : (chat.profile_img || '/default-avatar.png') %>" class="avatar">
                     <div class="chat-info">
                         <strong><%= chat.chat_name %></strong>
+                        <div class="last-message"><%= chat.last_message %></div>
                         <% if (chat.unread_count > 0) { %>
                             <span class="unread-badge"><%= chat.unread_count %></span>
                         <% } %>
@@ -21,14 +29,24 @@
                 </li>
             <% }); %>
         </ul>
-    </div>
-
-    <!-- Chat Window -->
+        <button class="mobile-logout" onclick="location.href='/logout'">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+        </button>
+    </div> 
+ 
     <div class="chat-window">
         <div class="chat-header">
-            <span id="chat-username">Select a chat</span>
+            <button class="back-button" onclick="goBackToList()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span id="chat-username">Select a chat</span>
+            </button>
         </div>
-        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-messages" id="chat-messages">
+        </div>
         <div class="chat-input">
             <input id="message" autocomplete="off" placeholder="Type a message..." />
             <button onclick="sendMessage()">Send</button>
@@ -77,7 +95,11 @@
         <h4>Members</h4>
         <ul id="group-members-list"></ul>
         <form action="/logout" method="POST">
-            <button type="submit" class="logout-button">Log Out</button>
+            <button type="submit" class="logout-button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                </svg> Log Out
+            </button>
         </form>
     </div>
 </div>
@@ -106,7 +128,12 @@
         currentChatId = chatId;
 
         document.getElementById("chat-messages").innerHTML = "";
-        document.getElementById("group-members-list").innerHTML = ""; 
+        document.getElementById("group-members-list").innerHTML = "";
+        if (window.innerWidth <= 768) {
+            document.querySelector('.chat-list').style.display = 'none';
+            document.querySelector('.chat-window').classList.add('active');
+        }
+
 
         fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`)
             .then(response => response.json())
@@ -234,10 +261,21 @@
     // Show the modal on "New Chat" click
     document.getElementById("composeButton").addEventListener("click", () => {
         document.getElementById("createChatModal").style.display = "flex";
+        document.querySelector('.chat-list').style.display = 'none';
     });
 
+    function goBackToList() {
+        if (window.innerWidth <= 768) {
+            document.querySelector('.chat-list').style.display = 'block';
+        }
+        document.querySelector('.chat-window').classList.remove('active');
+        currentChatId = null;
+        document.getElementById('chat-messages').innerHTML = '';
+    }
     function closeModal() {
         document.getElementById("createChatModal").style.display = "none";
+        document.getElementById("createChatModal").style.display = "none";
+        document.querySelector('.chat-list').style.display = 'block';
     }
 
     // Toggle group name field if >1 user is selected
