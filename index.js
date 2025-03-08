@@ -577,6 +577,7 @@ app.get('/:username/chat', async (req, res) => {
 });
 
 app.use(express.static(__dirname + "/public"));
+app.use(express.static(__dirname + "/scripts"));
 
 app.get("*", (req,res) => {
 	res.status(404);
