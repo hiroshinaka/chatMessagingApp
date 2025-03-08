@@ -33,7 +33,7 @@ async function getMessages(last_read, room_id) {
     // 1. Fetch basic message info
     const messagesSql = `
         SELECT m.*, u.username AS sender,
-               (m.message_id > ?) AS is_unread
+            (m.message_id > COALESCE(?, 0)) AS is_unread
         FROM message m
         JOIN room_user ru ON m.room_user_id = ru.room_user_id
         JOIN user u ON ru.user_id = u.user_id

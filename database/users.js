@@ -80,7 +80,7 @@ async function getChatList(currentUserId) {
                 AND m.message_id > (
                     SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id
                 )
-            ) AS unread_count
+                ) AS unread_count
         FROM room r
         JOIN room_user ru1 ON r.room_id = ru1.room_id
         JOIN room_user ru2 ON r.room_id = ru2.room_id
@@ -105,10 +105,10 @@ async function getChatList(currentUserId) {
                 FROM message m
                 JOIN room_user ru ON m.room_user_id = ru.room_user_id
                 WHERE ru.room_id = r.room_id
-                AND m.message_id > (
+                AND m.message_id > COALESCE((
                     SELECT last_read FROM room_user WHERE user_id = ? AND room_id = r.room_id
-                )
-            ) AS unread_count
+                ), 0)
+                ) AS unread_count
         FROM room r
         JOIN room_user ru ON r.room_id = ru.room_id
         WHERE ru.user_id = ?

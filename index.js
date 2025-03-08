@@ -97,6 +97,13 @@ io.on('connection', (socket) => {
             "INSERT INTO message (room_user_id, text, sent_datetime) VALUES (?, ?, NOW())",
             [room_user_id, text]
           );
+          const messageId = insertResult.insertId;
+          await database.query(
+            `UPDATE room_user 
+             SET last_read = ?
+             WHERE user_id = ? AND room_id = ?`,
+            [messageId, user_id, room_id]
+        );
       
           // 4. Fetch the username from the DB
           const [senderRow] = await database.query(
@@ -316,30 +323,23 @@ app.post('/createRoom', async (req, res) => {
         }
         const currentUserId = userRows[0].user_id;
         // 2. Check if we're creating a private chat
-        // Updated private chat logic in /createRoom
         if (user_ids.length === 1) {
             const otherUserId = parseInt(user_ids[0], 10);
             const lowestId = Math.min(otherUserId, currentUserId);
             const highestId = Math.max(otherUserId, currentUserId);
             const roomName = `private_${lowestId}_${highestId}`;
-
-            // Check for existing private chat using the standardized name
-            const existingRoom = await db_rooms.getExistingPrivateRoom(privateRoomName);
+        
+            // Check if the private room already exists
+            const existingRoom = await db_rooms.getExistingPrivateRoom(roomName);
             if (existingRoom.length > 0) {
                 return res.json({ success: true, room_id: existingRoom[0].room_id });
             }
-
-            // Create new private chat
-            const [roomResult] = await database.query(
-                "INSERT INTO room (name, start_datetime) VALUES (?, NOW())",
-                [roomName]
-            );
-            const roomId = await db_rooms.createRoom(privateRoomName);
-
-            // Insert both users
+        
+            // If not, create the new room
+            const roomId = await db_rooms.createRoom(roomName);
             await db_rooms.addRoomUsers(roomId, [
-                [currentUserId, roomId, null],
-                [otherUserId, roomId, null]
+                [currentUserId, roomId, 0],
+                [otherUserId, roomId, 0]
             ]);
             return res.json({ success: true, message: "Private chat created", room_id: roomId });
         } else {
@@ -357,7 +357,7 @@ app.post('/createRoom', async (req, res) => {
             const roomId = await db_rooms.createRoom(groupName);
 
             // Insert all participants
-            const values = participants.map(user_id => [user_id, roomId, null]);
+            const values = participants.map(user_id => [user_id, roomId, 0]);
             await db_rooms.addRoomUsers(roomId, values);
 
             return res.json({ success: true, message: "Group chat created", room_id: roomId });

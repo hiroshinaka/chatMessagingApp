@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 
-const dbConfig = {
+const pool =  mysql.createPool({
 	host: process.env.MYSQL_HOST,
     port: process.env.MYSQL_PORT,
 	user: process.env.MYSQL_USER,
@@ -11,8 +11,7 @@ const dbConfig = {
 	waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-};
+});
 
-var database = mysql.createPool(dbConfig);
 
-module.exports = database;
+module.exports = pool;

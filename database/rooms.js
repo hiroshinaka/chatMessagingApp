@@ -38,16 +38,20 @@ async function createRoom(roomName) {
 
 // Insert one or more users into a room
 async function addRoomUsers(roomId, users) {
-    // `users` should be an array of arrays: [ [user_id, roomId, last_read], ... ]
-    const sql = "INSERT INTO room_user (user_id, room_id, last_read) VALUES ?";
     try {
-        const [result] = await database.query(sql, [users]);
-        return result;
+        const [maxMsg] = await database.query(
+            "SELECT COALESCE(MAX(message_id), 0) AS max_id FROM message"
+        );
+        const lastRead = maxMsg[0].max_id;
+        const values = users.map(user => [user[0], roomId, lastRead]);
+        const sql = "INSERT INTO room_user (user_id, room_id, last_read) VALUES ?";
+        await database.query(sql, [values]);
     } catch (err) {
         console.error("Error inserting room users:", err);
         throw err;
     }
 }
+
 
 // Check for an existing group room that exactly matches the provided participants
 async function getExistingGroupRoom(participants) {
