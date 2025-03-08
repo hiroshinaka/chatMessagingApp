@@ -504,6 +504,111 @@ input, button {
     display: none;
 }
 
+/* ============ REACTION ============ */
+.reactions {
+    position: absolute;
+    bottom: 3px; 
+    display: flex;
+    gap: 4px;
+}
+.other-message .reactions {
+    right: 36px; 
+}
+
+.emoji-reaction {
+    background: #f0f2f5;
+    border-radius: 8px;
+    padding: 2px 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.emoji-reaction img {
+    width: 16px;
+    height: 16px;
+}
+
+.emoji-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    max-width: 200px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.emoji-option {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.emoji-option img {
+    width: 24px;
+    height: 24px;
+}
+
+.react-button {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    border: none;
+    background: rgba(0, 0, 0, 0.4);
+    color: #ffffff;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    bottom: 6px; 
+    }   
+    .other-message .react-button {
+        right: -50px;
+    }
+
+    .my-message .react-button {
+        left: -50px;
+        right: auto; 
+    }
+    .my-message,
+    .other-message {
+        position: relative;  
+        display: inline-block; 
+    }
+
+    .react-button:hover {
+        background: rgba(0, 0, 0, 0.7);
+    }
+    .my-message .reactions {
+        right: 5px;
+        bottom: -20px;
+    }
+    .other-message .reactions {
+        left: 5px;
+        bottom: -20px;
+    }
+
+    .my-message .message-content {
+        padding-right: 0;
+        padding-left: 30px;
+    }
+    .count{
+        color: black;
+    }
+
+
 /* ============ GLOBAL STYLES FOR MOBILE ============ */
 @media screen and (max-width: 768px) {
     html, body {

@@ -2,23 +2,30 @@
 
 <div class="messenger-container">
     <!-- Left Sidebar - Chats List -->
-    
     <div class="chat-list">
         <h2>Chats</h2>
         <button id="composeButton">
-                <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none"
+                 xmlns="http://www.w3.org/2000/svg">
                 <g id="SVGRepo_bgCarrier" stroke-width="0"/>
                 <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
-                <g id="SVGRepo_iconCarrier"> <path d="M12 7H6.5C5.67157 7 5 7.67157 5 8.5V17.5C5 18.3284 5.67157 19 6.5 19H15.5C16.3284 19 17 18.3284 17 17.5V13" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/> <path fill-rule="evenodd" clip-rule="evenodd" d="M19.1888 6.725V6.725C19.5892 6.34461 19.6054 5.71165 19.225 5.31125V5.31125C18.8446 4.91084 18.2117 4.89461 17.8113 5.275V5.275L17.6171 5.45948C17.2094 5.84678 17.2011 6.49397 17.5987 6.89159V6.89159C17.9822 7.27505 18.6014 7.28299 18.9946 6.90948L19.1888 6.725ZM16.8372 7.5443C17.2348 7.94193 17.2265 8.58911 16.8188 8.97641L9.18875 16.225V16.225C8.78835 16.6054 8.15539 16.5892 7.775 16.1887V16.1887C7.39462 15.7883 7.41085 15.1554 7.81125 14.775V14.775L15.4413 7.52641C15.8345 7.1529 16.4537 7.16084 16.8372 7.5443V7.5443Z" fill="#ffffff"/> </g>
-                </svg>
+                <g id="SVGRepo_iconCarrier">
+                    <path d="M12 7H6.5C5.67157 7 5 7.67157 5 8.5V17.5C5 18.3284 5.67157 19 6.5 19H15.5C16.3284 19 17 18.3284 17 17.5V13"
+                          stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd"
+                          d="M19.1888 6.725V6.725C19.5892 6.34461 19.6054 5.71165 19.225 5.31125V5.31125C18.8446 4.91084 18.2117 4.89461 17.8113 5.275V5.275L17.6171 5.45948C17.2094 5.84678 17.2011 6.49397 17.5987 6.89159V6.89159C17.9822 7.27505 18.6014 7.28299 18.9946 6.90948L19.1888 6.725ZM16.8372 7.5443C17.2348 7.94193 17.2265 8.58911 16.8188 8.97641L9.18875 16.225V16.225C8.78835 16.6054 8.15539 16.5892 7.775 16.1887V16.1887C7.39462 15.7883 7.41085 15.1554 7.81125 14.775V14.775L15.4413 7.52641C15.8345 7.1529 16.4537 7.16084 16.8372 7.5443V7.5443Z"
+                          fill="#ffffff"/>
+                </g>
+            </svg>
         </button>
-        <!-- In chat.ejs -->
+
         <ul id="conversation-list">
             <% chatList.forEach(chat => { %>
-                <li class="chat-item <%= chat.unread_count > 0 ? 'unread' : '' %>" 
+                <li class="chat-item <%= chat.unread_count > 0 ? 'unread' : '' %>"
                     data-room-id="<%= chat.room_id %>"
                     onclick="openChat('<%= chat.room_id %>', '<%= chat.type %>')">
-                    <img src="<%= chat.type === 'group' ? '/group-avatar.png' : (chat.profile_img || '/default-avatar.png') %>" class="avatar">
+                    <img src="<%= chat.type === 'group' ? '/group-avatar.png' : (chat.profile_img || '/default-avatar.png') %>"
+                         class="avatar">
                     <div class="chat-info">
                         <strong><%= chat.chat_name %></strong>
                         <div class="last-message"><%= chat.last_message %></div>
@@ -30,23 +37,25 @@
             <% }); %>
         </ul>
         <button class="mobile-logout" onclick="location.href='/logout'">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
             </svg>
         </button>
-    </div> 
- 
+    </div>
+
     <div class="chat-window">
         <div class="chat-header">
             <button class="back-button" onclick="goBackToList()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
                 <span id="chat-username">Select a chat</span>
             </button>
         </div>
-        <div class="chat-messages" id="chat-messages">
-        </div>
+        <div class="chat-messages" id="chat-messages"></div>
         <div class="chat-input">
             <input id="message" autocomplete="off" placeholder="Type a message..." />
             <button onclick="sendMessage()">Send</button>
@@ -57,20 +66,18 @@
     <div id="createChatModal" class="modal">
         <div class="modal-content">
             <h2>Create New Chat</h2>
-
             <!-- Group Name Section (Hidden by default) -->
             <div id="groupNameSection" style="display: none;">
                 <label for="chatNameInput">Group Name (for 2+ users):</label>
                 <input id="chatNameInput" type="text" placeholder="Enter group name" />
             </div>
-
             <ul id="userSelectionList">
                 <% allUsers.forEach(user => { %>
                     <li>
                         <label>
-                            <input 
-                                type="checkbox" 
-                                class="user-checkbox" 
+                            <input
+                                type="checkbox"
+                                class="user-checkbox"
                                 value="<%= user.user_id %>"
                                 onchange="toggleGroupName()"
                             />
@@ -85,20 +92,22 @@
         </div>
     </div>
 
-    <!-- Right Sidebar - Chat Details & Members -->
     <div class="chat-info-panel">
         <h3>Logged in as</h3>
-        <img id="chat-avatar-large" src="<%= profile_img %>" class="avatar-large" alt="User Avatar">        
+        <img id="chat-avatar-large" src="<%= profile_img %>"
+             class="avatar-large" alt="User Avatar">
         <p id="chat-username-large"><%= username %></p>
         <p id="active-status">Active now</p>
-        
+
         <h4>Members</h4>
         <ul id="group-members-list"></ul>
         <form action="/logout" method="POST">
             <button type="submit" class="logout-button">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
-                </svg> Log Out
+                </svg>
+                Log Out
             </button>
         </form>
     </div>
@@ -107,17 +116,19 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    let currentChat = null;
-    let isGroupChat = false;
     let currentChatId = null;
+    let isGroupChat = false;
     const username = "<%= username %>";
 
     /* ===========================
        Opening an existing chat
     =========================== */
     function openChat(chatId, chatType) {
-        console.log("Chat Clicked:", chatId, chatType); // Debugging log
-
+        console.log("Chat Clicked:", chatId, chatType); // Debug
+        if (window.innerWidth <= 768) {
+            document.querySelector('.chat-window').classList.add('active');
+            document.querySelector('.chat-list').style.display = 'none';
+        }
         if (!chatId || chatId.trim() === "") {
             console.error("Invalid chat parameters:", chatId, chatType);
             alert("Error: Invalid chat selected. Please try again.");
@@ -127,87 +138,83 @@
         isGroupChat = (chatType === 'group');
         currentChatId = chatId;
 
-        document.getElementById("chat-messages").innerHTML = "";
-        document.getElementById("group-members-list").innerHTML = "";
-        if (window.innerWidth <= 768) {
-            document.querySelector('.chat-list').style.display = 'none';
-            document.querySelector('.chat-window').classList.add('active');
-        }
-
-
+        // Fetch messages for this chat
         fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`)
             .then(response => response.json())
             .then(data => {
-                console.log("API Response:", data); // Debugging log
-
+                console.log("API Response:", data); // Debug
                 if (!data.messages || !Array.isArray(data.messages)) {
-                    console.error("Error: 'messages' field is missing or invalid in response", data);
+                    console.error("Error: 'messages' field is missing/invalid in response", data);
                     return;
                 }
-                
+
                 const messagesDiv = document.getElementById("chat-messages");
-                // In the openChat function:
+                messagesDiv.innerHTML = ""; // Clear old messages
+
                 data.messages.forEach(msg => {
-                    const li = document.createElement("div");
-                    li.className = msg.sender === username ? "my-message" : "other-message";
-                    li.dataset.messageId = msg.message_id;  
-                    li.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
-                    messagesDiv.appendChild(li);
+                    displayMessage(msg);
                 });
 
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                updateLastRead();  
+                updateLastRead();
 
+                // If it's a group chat, load group members
                 if (isGroupChat) {
                     fetch(`/getGroupMembers?groupId=${chatId}`)
                         .then(response => response.json())
-                        .then(data => {
-                            console.log("Group Members API Response:", data); // Debugging log
-                            document.getElementById("chat-username").textContent = data.group_name;
+                        .then(groupData => {
+                            console.log("Group Members API Response:", groupData); // Debug
+                            document.getElementById("chat-username").textContent = groupData.group_name;
                             const membersList = document.getElementById("group-members-list");
-                            membersList.innerHTML = ""; // Clear previous members
+                            membersList.innerHTML = ""; // Clear old
 
-                            if (data.success && Array.isArray(data.members)) {
-                                data.members.forEach(member => {
+                            if (groupData.success && Array.isArray(groupData.members)) {
+                                groupData.members.forEach(member => {
                                     const memberItem = document.createElement("li");
                                     memberItem.innerHTML = `
-                                        <img src="${member.profile_img || '/default-avatar.png'}" class="avatar-small">
+                                        <img src="${member.profile_img || '/default-avatar.png'}"
+                                             class="avatar-small">
                                         ${member.username}
                                     `;
                                     membersList.appendChild(memberItem);
                                 });
                             } else {
-                                console.error("Error: Invalid group members response", data);
+                                console.error("Error: Invalid group members response", groupData);
                             }
                         })
                         .catch(error => console.error("Error fetching group members:", error));
                 }
             })
             .catch(error => console.error("Error fetching messages:", error));
+
+        // Remove unread badge if any
         const chatItem = document.querySelector(`.chat-item[data-room-id="${chatId}"]`);
         if (chatItem) {
             chatItem.classList.remove('unread');
             const badge = chatItem.querySelector('.unread-badge');
             if (badge) badge.remove();
         }
-        
     }
-
 
     /* ===========================
        Socket.io Handling
     =========================== */
-    // In your client-side script
     socket.on('receiveMessage', (msg) => {
         displayMessage(msg);
-        
-        // Update chat list unread count
+
+        // If not viewing that chat, increment unread
         const chatItem = document.querySelector(`.chat-item[data-room-id="${msg.room_id}"]`);
-        if (chatItem && chatItem !== document.querySelector('.active-chat')) {
-            const badge = chatItem.querySelector('.unread-badge');
-            const currentCount = parseInt(badge?.textContent || 0);
-            badge.textContent = currentCount + 1;
+        if (chatItem && msg.room_id !== currentChatId) {
             chatItem.classList.add('unread');
+            let badge = chatItem.querySelector('.unread-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.classList.add('unread-badge');
+                badge.textContent = '1';
+                chatItem.appendChild(badge);
+            } else {
+                badge.textContent = parseInt(badge.textContent) + 1;
+            }
         }
     });
 
@@ -215,10 +222,131 @@
         const messagesDiv = document.getElementById("chat-messages");
         const li = document.createElement('div');
         li.className = msg.sender === username ? "my-message" : "other-message";
-        li.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+        li.dataset.messageId = msg.message_id;
+
+        let reactionsHtml = '';
+        if (msg.reactions?.length > 0) {
+            reactionsHtml = `<div class="reactions">`;
+            msg.reactions.forEach(reaction => {
+                reactionsHtml += `
+                <span class="emoji-reaction" data-emoji-id="${reaction.emoji_id}">
+                    <span class="emoji-character">${reaction.image}</span>
+                    <span class="count">${reaction.count}</span>
+                </span>
+            `;
+
+            });
+            reactionsHtml += '</div>';
+        }
+
+        li.innerHTML = `
+            <div class="message-content">
+                <strong>${msg.sender}:</strong> ${msg.text}
+                ${reactionsHtml}
+                <button class="react-button">+</button>
+            </div>
+        `;
         messagesDiv.appendChild(li);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        updateLastRead();
+    }
+
+    // SINGLE event listener for react button
+    document.getElementById('chat-messages').addEventListener('click', async (e) => {
+        if (e.target.classList.contains('react-button')) {
+            const messageElement = e.target.closest('.my-message, .other-message');
+            if (!messageElement) return;
+
+            // Check if an emoji-picker is already open for this message
+            const existingPicker = messageElement.querySelector('.emoji-picker');
+            if (existingPicker) {
+            // If open, remove it (close)
+            existingPicker.remove();
+            } else {
+            // Otherwise, open (show) the emoji picker
+            const messageId = messageElement.dataset.messageId;
+            showEmojiPicker(messageElement, messageId);
+            }
+        }
+        });
+
+
+    async function showEmojiPicker(messageElement, messageId) {
+        // Fetch emoji data if not in memory
+        if (!window.emojis) {
+            try {
+                const response = await fetch('/emojis');
+                window.emojis = await response.json();
+            } catch (err) {
+                console.error('Error fetching /emojis:', err);
+                return;
+            }
+        }
+
+        // Create the picker
+        const picker = document.createElement('div');
+        picker.className = 'emoji-picker';
+
+        window.emojis.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.className = 'emoji-option';
+        btn.textContent = emoji.image;  // e.g. "😞"
+        btn.onclick = () => sendReaction(messageId, emoji.emoji_id);
+        picker.appendChild(btn);
+        });
+
+
+        // Append to the message content
+        const msgContent = messageElement.querySelector('.message-content');
+        // If there's an old picker, remove it first
+        const oldPicker = msgContent.querySelector('.emoji-picker');
+        if (oldPicker) oldPicker.remove();
+        msgContent.appendChild(picker);
+    }
+
+    function sendReaction(messageId, emojiId) {
+        fetch('/react', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId, emoji_id: emojiId })
+        }).catch(console.error);
+    }
+
+    socket.on('reactionUpdate', (data) => {
+        const messageElement = document.querySelector(`[data-message-id="${data.message_id}"]`);
+        if (!messageElement) return;
+
+        const reactionsContainer = messageElement.querySelector('.reactions')
+            || createReactionsContainer(messageElement);
+        const emojiElement = reactionsContainer.querySelector(`[data-emoji-id="${data.emoji_id}"]`);
+
+        if (data.count > 0) {
+            if (emojiElement) {
+                emojiElement.querySelector('.count').textContent = data.count;
+            } else {
+                addEmojiReaction(reactionsContainer, data);
+            }
+        } else if (emojiElement) {
+            // If count is 0, remove that reaction
+            emojiElement.remove();
+        }
+    });
+
+    function createReactionsContainer(messageElement) {
+        const container = document.createElement('div');
+        container.className = 'reactions';
+        messageElement.querySelector('.message-content').appendChild(container);
+        return container;
+    }
+
+    function addEmojiReaction(container, data) {
+        const emojiElement = document.createElement('span');
+        emojiElement.className = 'emoji-reaction';
+        emojiElement.dataset.emojiId = data.emoji_id;
+        emojiElement.innerHTML = `
+        <span class="emoji-character">${data.image}</span>            
+        <span class="count">${data.count}</span>
+        `;
+        container.appendChild(emojiElement);
     }
 
     function sendMessage() {
@@ -227,38 +355,38 @@
         const msgText = messageInput.value.trim();
         if (!msgText) return;
 
-        // Send the message via Socket.io with required data
+        // Emit message via Socket.io
         socket.emit('sendMessage', {
             room_id: currentChatId,
             text: msgText
         });
+
+        // Mark last read
         const messages = document.querySelectorAll('.my-message, .other-message');
         if (messages.length > 0) {
-            const lastMessageId = messages[messages.length - 1].dataset.messageId;
             updateLastRead();
         }
         messageInput.value = '';
     }
 
     function updateLastRead() {
-        const messages = document.querySelectorAll('.my-message, .other-message');        
-        if (messages.length > 0) {
-            const lastMessageId = messages[messages.length - 1].dataset.messageId;
-            fetch('/updateLastRead', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    room_id: currentChatId,
-                    last_message_id: lastMessageId
-                })
-            });
-        }
+        const messages = document.querySelectorAll('.my-message, .other-message');
+        if (messages.length === 0) return;
+
+        const lastMessageId = messages[messages.length - 1].dataset.messageId;
+        fetch('/updateLastRead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentChatId,
+                last_message_id: lastMessageId
+            })
+        });
     }
 
     /* ===========================
        Modal Logic
     =========================== */
-    // Show the modal on "New Chat" click
     document.getElementById("composeButton").addEventListener("click", () => {
         document.getElementById("createChatModal").style.display = "flex";
         document.querySelector('.chat-list').style.display = 'none';
@@ -274,15 +402,12 @@
     }
     function closeModal() {
         document.getElementById("createChatModal").style.display = "none";
-        document.getElementById("createChatModal").style.display = "none";
         document.querySelector('.chat-list').style.display = 'block';
     }
 
-    // Toggle group name field if >1 user is selected
     function toggleGroupName() {
         const checkboxes = document.querySelectorAll(".user-checkbox:checked");
         const groupNameSection = document.getElementById("groupNameSection");
-
         if (checkboxes.length > 1) {
             groupNameSection.style.display = "block";
         } else {
@@ -299,16 +424,14 @@
             return;
         }
 
-        // If multiple users are selected, we require a group name
-        // If exactly 1 user is selected, hide group name field
         const groupNameInput = document.getElementById("chatNameInput");
         let chatName = groupNameInput.value.trim();
 
-        // If only 1 user is selected, we ignore chatName => server can default to private chat
+        // If only one user => ignore chatName
         if (selectedUsers.length === 1) {
-            chatName = ""; // Force empty name => private chat
+            chatName = "";
         } else {
-            // If 2 or more users selected but no name => prompt
+            // If multiple but no group name => prompt
             if (!chatName) {
                 alert("Please enter a group name for 2 or more users.");
                 return;
@@ -319,7 +442,7 @@
             ? { room_name: chatName, user_ids: selectedUsers }
             : { user_ids: selectedUsers };
 
-        console.log("Sending request to create chat:", requestBody);
+        console.log("Creating chat:", requestBody);
 
         fetch("/createRoom", {
             method: "POST",

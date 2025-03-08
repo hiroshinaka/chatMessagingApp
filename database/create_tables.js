@@ -1,5 +1,5 @@
 const database = include('databaseConnection');
-
+//Not in use
 async function createTables() {
 	let createUserSQL = `
 		CREATE TABLE IF NOT EXISTS user (

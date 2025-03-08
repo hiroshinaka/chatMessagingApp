@@ -1,50 +1,55 @@
 require('./utils');
 require('dotenv').config();
 
-
 const express = require('express');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const bcrypt = require('bcrypt');
 const saltRounds = 12;
 
+//Database connection
 const database = include('databaseConnection');
 const db_utils = include('database/db_utils');
 const db_users = include('database/users');
 const db_rooms = include('database/rooms');
 const db_messages = include('database/messages');
+const db_emoji = include('database/emoji');
 const success = db_utils.printMySQLVersion();
 
 const port = process.env.PORT || 3000;
 
 const app = express();
 
+//For chat messaging
 const http = require('http');
 const socketIo = require('socket.io');
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const expireTime = 24 * 60 * 60 * 1000; //expires after 1 day  (hours * minutes * seconds * millis)
+//expires after 1 day  (hours * minutes * seconds * millis)
+const expireTime = 24 * 60 * 60 * 1000;
 
+//For profile pic uploads
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const uploadDir = path.join(__dirname, 'public/uploads');
 
-/* secret information section */
+//MongoDB session store
 const mongodb_user = process.env.MONGODB_USER;
 const mongodb_password = process.env.MONGODB_PASSWORD;
 const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 const mongo_cluster = process.env.MONGODB_CLUSTER;
-/* END secret section */
 
+//MongoDB connection string
 var mongoStore = MongoStore.create({
 	mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongo_cluster}.mongodb.net/sessions`,
 	crypto: {
 		secret: mongodb_session_secret
 	}
-})
+});
+
 const sessionMiddleware = session({
     secret: node_session_secret,
     store: mongoStore,
@@ -57,7 +62,7 @@ app.use(sessionMiddleware);
 io.use((socket, next) => {
     sessionMiddleware(socket.request, {}, next);
 });
-
+//Socket.io connection handling
 io.on('connection', (socket) => {
     console.log('a user connected');
 
@@ -114,18 +119,12 @@ io.on('connection', (socket) => {
           socket.emit("messageError", "Failed to send message.");
         }
       });
-      
-      
-      
-    
     socket.on("disconnect", () => {
         console.log("User disconnected");
     });
 });
 
-
 // Ensure "uploads" folder exists
-
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -163,13 +162,7 @@ app.get('/about', (req,res) => {
     if (!color) {
         color = "black";
     }
-
     res.render("about", {color: color} );
-});
-
-app.get('/contact', (req,res) => {
-    var missingEmail = req.query.missing;
-    res.render("contact", {missing: missingEmail});
 });
 
 app.get('/getMessages', async (req, res) => {
@@ -227,57 +220,101 @@ app.get('/getGroupMembers', async (req, res) => {
     }
   });
   
-  
-
-// app.get('/createTables', async (req,res) => {
-
-//     const create_tables = include('database/create_tables');
-
-//     var success = create_tables.createTables();
-//     if (success) {
-//         res.render("successMessage", {message: "Created tables."} );
-//     }
-//     else {
-//         res.render("errorMessage", {error: "Failed to create tables."} );
-//     }
-// });
-
 app.get('/createUser', (req,res) => {
     res.render("createUser");
 });
 
-app.post('/react', async (req, res) => {
+app.get('/emojis', async (req, res) => {
     try {
-        const { message_id, user_id, emoji_id } = req.body;
-        const query = "INSERT INTO messages_reacted (message_id, user_id, emoji_id) VALUES (?, ?, ?)";
-
-        await database.query(query, [message_id, user_id, emoji_id]);
-        
-        io.emit('message reaction', { message_id, user_id, emoji_id });
-        res.sendStatus(200);
+        const emojis = await db_emoji.getAllEmojis();
+        res.json(emojis);
     } catch (error) {
-        console.error("Error saving reaction:", error);
+        console.error("Error fetching emojis:", error);
         res.status(500).json({ error: "Database error" });
     }
 });
 
+app.post('/react', async (req, res) => {
+    try {
+        const { message_id, emoji_id } = req.body;
+        const [userRows] = await database.query(
+            "SELECT user_id FROM user WHERE username = ?",
+            [req.session.username]
+        );
+        if (!userRows || userRows.length === 0) {
+            throw new Error("User not found in DB for reaction");
+        }
+        const user_id = userRows[0].user_id; // <-- Corrected
+        
+        // Check existing reaction
+        const [existing] = await database.query(
+            "SELECT * FROM messages_reacted WHERE message_id = ? AND user_id = ? AND emoji_id = ?",
+            [message_id, user_id, emoji_id]
+        );
+
+        if (existing.length > 0) {
+            await database.query(
+                "DELETE FROM messages_reacted WHERE reaction_id = ?",
+                [existing[0].reaction_id]
+            );
+        } else {
+            await database.query(
+                "INSERT INTO messages_reacted (message_id, user_id, emoji_id) VALUES (?, ?, ?)",
+                [message_id, user_id, emoji_id]
+            );
+        }
+
+        // Get emoji details
+        const [emojiResult] = await database.query(
+            'SELECT * FROM emoji WHERE emoji_id = ?',
+            [emoji_id]
+        );
+        const emoji = emojiResult[0];
+
+        // Get updated count
+        const [countResult] = await database.query(
+            'SELECT COUNT(*) as count FROM messages_reacted WHERE message_id = ? AND emoji_id = ?',
+            [message_id, emoji_id]
+        );
+        const count = countResult[0].count;
+
+        // Get room_id for the message
+        const [roomResult] = await database.query(`
+            SELECT ru.room_id 
+            FROM message m
+            JOIN room_user ru ON m.room_user_id = ru.room_user_id
+            WHERE m.message_id = ?
+        `, [message_id]);
+        const room_id = roomResult[0].room_id;
+
+        // Emit to room
+        io.to(room_id).emit('reactionUpdate', {
+            message_id,
+            emoji_id,
+            image: emoji.image,
+            count: count
+        });
+        console.log("Reaction updated:", message_id, emoji_id, count);
+        res.sendStatus(200);
+    } catch (error) {
+        console.error("Error toggling reaction:", error);
+        res.status(500).json({ error: "Database error" });
+    }
+});
 
 app.post('/createRoom', async (req, res) => {
     try {
         const { room_name, user_ids } = req.body;
-
         // Validate input
         if (!Array.isArray(user_ids)) {
             return res.status(400).json({ success: false, message: "Invalid data provided." });
         }
-
         // 1. Get current user's ID from session
         const userRows = await db_rooms.getUserIdByUsername(req.session.username);
         if (userRows.length === 0) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
         const currentUserId = userRows[0].user_id;
-
         // 2. Check if we're creating a private chat
         // Updated private chat logic in /createRoom
         if (user_ids.length === 1) {
@@ -356,7 +393,7 @@ app.post('/submitUser', upload.single('profile_img'), async (req, res) => {
         });
 
         if (userCreated) {
-            return res.redirect('/login'); // ✅ Success
+            return res.redirect('/login'); 
         } else {
             return res.render("errorMessage", { error: "Failed to create user." });
         }
@@ -365,7 +402,7 @@ app.post('/submitUser', upload.single('profile_img'), async (req, res) => {
         return res.status(500).render("errorMessage", { error: "Server error" });
     }
 });
-// Add this endpoint to update last_read
+//Endpoint for updating the last read message in a chat room
 app.post('/updateLastRead', async (req, res) => {
     try {
         const { room_id, last_message_id } = req.body;
