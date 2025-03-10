@@ -376,6 +376,13 @@ app.post('/submitUser', upload.single('profile_img'), async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{10,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).render("errorMessage", { 
+                error: "Password must be at least 10 characters long and include upper and lower case letters, numbers, and symbols." 
+            });
+        }
+
         // Check if file was uploaded
         let profileImgPath = "/default.png"; // Default image
         if (req.file) {
