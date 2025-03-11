@@ -1,11 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize socket connection for real-time messaging
-const socket = io();
-
-// Global variables to track the current chat and its type
-let currentChatId = null;
-let isGroupChat = false;
-const username = window.username;  
+    const socket = io();
+    let currentChatId = null;
+    let isGroupChat = false;
+    const username = window.username;
+    const storedChatId = localStorage.getItem('currentChatId');
+    const storedChatType = localStorage.getItem('currentChatType');
+    function init() {
+        if (storedChatId && storedChatType) {
+            openChat(storedChatId, storedChatType);
+            localStorage.removeItem('currentChatId');
+            localStorage.removeItem('currentChatType');
+        }
+    }
 /* ===============================================
    Function: openChat(chatId, chatType)
    - Loads messages for the selected chat
@@ -13,83 +20,70 @@ const username = window.username;
    - Fetches messages from server and updates UI
    - If a group chat, fetches and displays group member info
 =============================================== */
-function openChat(chatId, chatType) {
-    console.log("Chat Clicked:", chatId, chatType); // Debug log
+async function openChat(chatId, chatType) {
+    try {
+        console.log("Opening chat:", chatId, chatType);
+        localStorage.setItem('currentChatId', chatId);
+        localStorage.setItem('currentChatType', chatType);
 
-    // For mobile devices: hide chat list and show chat window
-    if (window.innerWidth <= 768) {
-        document.querySelector('.chat-window').classList.add('active');
-        document.querySelector('.chat-list').style.display = 'none';
-    }
+        // Validate parameters
+        if (!chatId?.trim()) {
+            throw new Error("Invalid chat parameters");
+        }
 
-    // Validate chat parameters before proceeding
-    if (!chatId || chatId.trim() === "") {
-        console.error("Invalid chat parameters:", chatId, chatType);
-        alert("Error: Invalid chat selected. Please try again.");
-        return;
-    }
+        // Mobile view handling
+        if (window.innerWidth <= 768) {
+            document.querySelector('.chat-window').classList.add('active');
+            document.querySelector('.chat-list').style.display = 'none';
+        }
 
-    // Set global variables based on chat type
-    isGroupChat = (chatType === 'group');
-    currentChatId = chatId;
+        // Set chat state
+        isGroupChat = (chatType === 'group');
+        currentChatId = chatId;
+        const chatWindow = document.querySelector('.chat-window');
+        chatWindow.setAttribute('data-room-id', chatId);
+        chatWindow.setAttribute('data-chat-type', chatType);
 
-    // Fetch messages from the server for the selected chat
-    fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`)
-        .then(response => response.json())
-        .then(data => {
-            console.log("API Response:", data); // Debug log
-            if (!data.messages || !Array.isArray(data.messages)) {
-                console.error("Error: 'messages' field is missing/invalid in response", data);
-                return;
-            }
+        // Fetch messages with error handling
+        const response = await fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        console.log("Messages response:", data);
 
-            // Clear any previous messages and display new ones
-            const messagesDiv = document.getElementById("chat-messages");
-            messagesDiv.innerHTML = "";
+        if (!data.messages || !Array.isArray(data.messages)) {
+            throw new Error("Invalid messages format");
+        }
 
-            data.messages.forEach(msg => {
-                displayMessage(msg);
-            });
+        // Update UI
+        const messagesDiv = document.getElementById("chat-messages");
+        messagesDiv.innerHTML = "";
+        data.messages.forEach(displayMessage);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        updateLastRead();
 
-            // Auto-scroll to the latest message and update read status
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            updateLastRead();
+        // Handle group members
+        if (isGroupChat) {
+            const groupResponse = await fetch(`/getGroupMembers?groupId=${chatId}`);
+            if (!groupResponse.ok) throw new Error(`Group members fetch failed: ${groupResponse.status}`);
+            
+            const groupData = await groupResponse.json();
+            console.log("Group members:", groupData);
+            
+            // Update group UI...
+        }
 
-            // For group chats, fetch and display group member details
-            if (isGroupChat) {
-                fetch(`/getGroupMembers?groupId=${chatId}`)
-                    .then(response => response.json())
-                    .then(groupData => {
-                        console.log("Group Members API Response:", groupData); // Debug log
-                        document.getElementById("chat-username").textContent = groupData.group_name;
-                        const membersList = document.getElementById("group-members-list");
-                        membersList.innerHTML = ""; // Clear previous list
-
-                        if (groupData.success && Array.isArray(groupData.members)) {
-                            groupData.members.forEach(member => {
-                                const memberItem = document.createElement("li");
-                                memberItem.innerHTML = `
-                                    <img src="${member.profile_img || '/default-avatar.png'}"
-                                         class="avatar-small">
-                                    ${member.username}
-                                `;
-                                membersList.appendChild(memberItem);
-                            });
-                        } else {
-                            console.error("Error: Invalid group members response", groupData);
-                        }
-                    })
-                    .catch(error => console.error("Error fetching group members:", error));
-            }
-        })
-        .catch(error => console.error("Error fetching messages:", error));
-
-    // Remove unread badge from chat list for the opened chat
-    const chatItem = document.querySelector(`.chat-item[data-room-id="${chatId}"]`);
-    if (chatItem) {
-        chatItem.classList.remove('unread');
-        const badge = chatItem.querySelector('.unread-badge');
-        if (badge) badge.remove();
+        // Clear unread badges
+        const chatItem = document.querySelector(`.chat-item[data-room-id="${chatId}"]`);
+        if (chatItem) {
+            chatItem.classList.remove('unread');
+            const badge = chatItem.querySelector('.unread-badge');
+            if (badge) badge.remove();
+        }
+    } catch (error) {
+        console.error("Error in openChat:", error);
+        alert("Failed to load chat. Please try again.");
+        goBackToList();
     }
 }
 window.openChat = openChat;
@@ -219,11 +213,29 @@ async function showEmojiPicker(messageElement, messageId) {
    - Sends the selected emoji reaction to the server
 =============================================== */
 function sendReaction(messageId, emojiId) {
-    fetch('/react', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: messageId, emoji_id: emojiId })
-    }).catch(console.error);
+    try {
+        // Get current chat state from UI
+        const chatWindow = document.querySelector('.chat-window');
+        const currentRoomId = chatWindow.getAttribute('data-room-id');
+        const currentChatType = chatWindow.getAttribute('data-chat-type');
+
+        // Save state before reacting
+        localStorage.setItem('currentChatId', currentRoomId);
+        localStorage.setItem('currentChatType', currentChatType);
+
+        fetch('/react', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId, emoji_id: emojiId })
+        })
+        .then(() => {
+            // Reload after short delay to ensure state is saved
+            setTimeout(() => location.reload(), 300);
+        })
+        .catch(console.error);
+    } catch (error) {
+        console.error("Error in sendReaction:", error);
+    }
 }
 
 /* ===============================================
@@ -285,24 +297,35 @@ function addEmojiReaction(container, data) {
    - Clears the input field and updates the last read message status
 =============================================== */
 function sendMessage() {
-    if (!currentChatId) return;
-    const messageInput = document.getElementById('message');
-    const msgText = messageInput.value.trim();
-    if (!msgText) return;
+    try {
+        const chatWindow = document.querySelector('.chat-window');
+        const currentRoomId = chatWindow.getAttribute('data-room-id');
+        const currentChatType = chatWindow.getAttribute('data-chat-type');
+        const messageInput = document.getElementById('message');
+        const msgText = messageInput.value.trim();
 
-    // Emit the message to the server via socket
-    socket.emit('sendMessage', {
-        room_id: currentChatId,
-        text: msgText
-    });
+        if (!msgText || !currentRoomId) return;
 
-    // Update last read message status after sending
-    const messages = document.querySelectorAll('.my-message, .other-message');
-    if (messages.length > 0) {
-        updateLastRead();
+        // Save state before sending
+        localStorage.setItem('currentChatId', currentRoomId);
+        localStorage.setItem('currentChatType', currentChatType);
+
+        socket.emit('sendMessage', {
+            room_id: currentRoomId,
+            text: msgText
+        });
+
+        messageInput.value = '';
+        setTimeout(() => {
+            location.reload();
+        }, 300); // Increased delay for better reliability
+    } catch (error) {
+        console.error("Error in sendMessage:", error);
     }
-    messageInput.value = '';
 }
+
+// Initialize the chat after DOM loads
+init();
 window.sendMessage = sendMessage;
 /* ===============================================
    Function: updateLastRead()
@@ -421,4 +444,5 @@ function createChat() {
     .catch(error => console.error("Error:", error));
 }
 window.createChat = createChat;
+
 });
