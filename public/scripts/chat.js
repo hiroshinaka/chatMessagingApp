@@ -59,8 +59,10 @@ async function openChat(chatId, chatType) {
         const messagesDiv = document.getElementById("chat-messages");
         messagesDiv.innerHTML = "";
         data.messages.forEach(displayMessage);
+        
+        // Add scroll listener for read detection
+        messagesDiv.addEventListener('scroll', handleScrollForReadStatus);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        updateLastRead();
 
         // Handle group members
         if (isGroupChat) {
@@ -69,8 +71,6 @@ async function openChat(chatId, chatType) {
             
             const groupData = await groupResponse.json();
             console.log("Group members:", groupData);
-            
-            // Update group UI...
         }
 
         // Clear unread badges
@@ -87,6 +87,16 @@ async function openChat(chatId, chatType) {
     }
 }
 window.openChat = openChat;
+
+function handleScrollForReadStatus() {
+    const messagesDiv = document.getElementById("chat-messages");
+    const { scrollTop, scrollHeight, clientHeight } = messagesDiv;
+    const isAtBottom = scrollHeight - scrollTop === clientHeight;
+
+    if (isAtBottom) {
+        updateLastRead();
+    }
+}
 /* ===============================================
    Socket.io Event Handling: receiveMessage
    - Listens for incoming messages
@@ -120,6 +130,20 @@ function displayMessage(msg) {
     console.log('msg.sender:', msg.sender, '| local username:', username);
     const messagesDiv = document.getElementById("chat-messages");
     const li = document.createElement('div');
+
+    const date = new Date(msg.sent_datetime);
+    const dateOptions = {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    };
+    const dateTimeString = date.toLocaleString('en-US', dateOptions);
+
+
     // Apply different styling depending on sender
     li.className = msg.sender === username ? "my-message" : "other-message";
     li.dataset.messageId = msg.message_id;
@@ -143,11 +167,27 @@ function displayMessage(msg) {
     li.innerHTML = `
         <div class="message-content">
             <strong>${msg.sender}:</strong> ${msg.text}
+            <div class="message-timestamp">${dateTimeString}</div>
             ${reactionsHtml}
             <button class="react-button">+</button>
         </div>
     `;
     messagesDiv.appendChild(li);
+
+    if (msg.is_unread) {
+        const existingDivider = messagesDiv.querySelector('.unread-divider');
+        if (!existingDivider) {
+            const unreadDivider = document.createElement('div');
+            unreadDivider.className = 'unread-divider';
+            unreadDivider.innerHTML = `
+                <div class="unread-line"></div>
+                <span class="unread-text">New Messages</span>
+                <div class="unread-line"></div>
+            `;
+            messagesDiv.insertBefore(unreadDivider, li);
+        }
+    }
+
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
@@ -332,6 +372,11 @@ window.sendMessage = sendMessage;
    - Sends a request to the server to update the last read message for the chat
 =============================================== */
 function updateLastRead() {
+    document.querySelectorAll('.unread-divider').forEach(div => {
+        div.classList.add('hidden');
+        setTimeout(() => div.remove(), 10000);
+    });
+
     const messages = document.querySelectorAll('.my-message, .other-message');
     if (messages.length === 0) return;
 
@@ -444,5 +489,12 @@ function createChat() {
     .catch(error => console.error("Error:", error));
 }
 window.createChat = createChat;
+
+document.getElementById('message').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault(); 
+      sendMessage();      
+    }
+  });
 
 });

@@ -287,6 +287,51 @@ input, button {
     }
 }
 
+/* Message timestamp */
+.message-timestamp {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 0.25rem;
+    text-align: right;
+}
+
+/* Unread messages divider */
+.unread-divider {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 1rem 0;
+    color: #666;
+    position: relative;
+    padding: 8px 0;
+    opacity: 1;
+    transition: opacity 7s ease-in-out;
+}
+
+.unread-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    border-top: 2px solid #7289da;
+    z-index: -1;
+}
+.unread-divider.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.unread-text {
+    background: #36393f;
+    padding: 0 10px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #c90a0a;
+    margin: 0 auto;
+    border-radius: 5px;
+}
+
 /* ======== CHAT INPUT ======== */
 .chat-input {
     display: flex;
