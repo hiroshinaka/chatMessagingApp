@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../databaseConnection');
-
+const rooms = require('../database/rooms');
 //Send a message
-router.post('send', async (req, res) => {
+router.post('/send', async (req, res) => {
     const {room_user_idm, text} = req.body;
     try{
         await db.query('INSERT INTO messages (room_user_id, text) VALUES (?, ?, NOW())', [room_user_id, text]);
@@ -34,4 +34,29 @@ router.get("/history/:room_id", async (req, res) => {
     }
 });
 
+router.post('/:roomId/invite', async (req, res) => {    
+    console.log('Invite request:', {
+        roomId: req.params.roomId,
+        userId: req.body.userId,
+        timestamp: new Date().toISOString()
+    });
+
+    try {
+        const result = await rooms.inviteUserToRoom(req.params.roomId, req.body.userId);
+        console.log('Invite result:', result);
+        
+        if (result.success) {
+            res.json({ success: true, message: 'User added successfully' });
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        console.error('Server error during invitation:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+});
 module.exports = router;

@@ -437,6 +437,35 @@ input, button {
     left: 50%;
     transform: translateX(-50%);
 }
+#invite-button {
+    display: none;
+    background: #0084ff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    margin: 15px auto;
+    width: 80%;
+    font-size: 14px;
+}
+
+#invite-button:hover {
+    background: #0073e6;
+}
+.small-avatar {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+#group-members-list li {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+}
 
 
 

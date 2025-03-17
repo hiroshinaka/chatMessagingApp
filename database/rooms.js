@@ -99,6 +99,38 @@ async function getGroupMembers(groupId) {
     }
 }
 
+async function inviteUserToRoom(roomId, invitedUserId) {
+    try {
+        // 1. Get current members
+        const [members] = await database.query(
+            'SELECT COUNT(*) as count FROM room_user WHERE room_id = ?',
+            [roomId]
+        );
+        const memberCount = members[0].count;
+
+        // 2. Check if user exists
+        const [exists] = await database.query(
+            'SELECT * FROM room_user WHERE room_id = ? AND user_id = ?',
+            [roomId, invitedUserId]
+        );
+        
+        if (exists.length > 0) {
+            return { success: false, message: 'User already in group' };
+        }
+
+        // 3. Insert new member
+        await database.query(
+            'INSERT INTO room_user (user_id, room_id, last_read) VALUES (?, ?, ?)',
+            [invitedUserId, roomId, 0]
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Database error:', error);
+        return { success: false, message: 'Database operation failed' };
+    }
+}
+
 module.exports = {
     getUserIdByUsername,
     getExistingPrivateRoom,
@@ -106,5 +138,6 @@ module.exports = {
     addRoomUsers,
     getExistingGroupRoom,
     getRoomGroupName,
-    getGroupMembers
+    getGroupMembers,
+    inviteUserToRoom
 };

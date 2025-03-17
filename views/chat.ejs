@@ -4,9 +4,32 @@
     const profileImg = "<%= profile_img %>";
     const chatListData = <%- JSON.stringify(chatList) %>;
     const allUsersData = <%- JSON.stringify(allUsers) %>;
+    window.currentChatMembers = <%- JSON.stringify([]) %>; 
     window.username = "<%= username %>";
 </script>
 <script src="/scripts/chat.js"></script>
+<script>
+    // Temporary debug helper
+    window.debugInviteFlow = async () => {
+        const testRoomId = prompt('Enter room ID to test');
+        const testUserId = prompt('Enter user ID to test');
+        
+        try {
+            const response = await fetch(`/rooms/${testRoomId}/invite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: testUserId })
+            });
+            
+            const result = await response.json();
+            console.log('Direct invite test result:', result);
+            alert(`Test result: ${JSON.stringify(result)}`);
+        } catch (error) {
+            console.error('Direct test error:', error);
+            alert('Test failed: ' + error.message);
+        }
+    };
+    </script>
 
 <div class="messenger-container">
     <!-- Left Sidebar - Chats List -->
@@ -106,19 +129,29 @@
              class="avatar-large" alt="User Avatar">
         <p id="chat-username-large"><%= username %></p>
         <p id="active-status">Active now</p>
-
+        <button id="invite-button" style="display: none;" onclick="openInviteModal()">Invite Members</button>
         <h4>Members</h4>
+
         <ul id="group-members-list"></ul>
         <form action="/logout" method="POST">
             <button type="submit" class="logout-button">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2">
+                    stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
                 </svg>
                 Log Out
             </button>
         </form>
+
+       
     </div>
 </div>
-
+<div id="inviteModal" class="modal">
+    <div class="modal-content">
+        <h2>Invite Members</h2>
+        <ul id="inviteUserList"></ul>
+        <button id="sendInviteButton" onclick="sendInvites()">Invite</button>        
+        <button onclick="closeInviteModal()">Cancel</button>
+    </div>
+</div>
 <%- include("templates/footer") %>

@@ -15,7 +15,7 @@ const db_rooms = include('database/rooms');
 const db_messages = include('database/messages');
 const db_emoji = include('database/emoji');
 const success = db_utils.printMySQLVersion();
-
+const messagesRouter = require('./routes/messages');
 const port = process.env.PORT || 3000;
 
 const app = express();
@@ -135,7 +135,7 @@ io.on('connection', (socket) => {
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
-
+app.use('/api', messagesRouter); 
 // Multer Storage Configuration
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -531,7 +531,7 @@ function adminAuthorization(req, res, next) {
 		next();
 	}
 }
-
+app.use('/rooms', messagesRouter);
 app.use('/loggedin', sessionValidation);
 app.use('/loggedin/admin', adminAuthorization);
 

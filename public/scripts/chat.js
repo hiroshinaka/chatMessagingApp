@@ -65,12 +65,27 @@ async function openChat(chatId, chatType) {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         // Handle group members
+       // In chat.js - inside the openChat function's group handling section
         if (isGroupChat) {
-            const groupResponse = await fetch(`/getGroupMembers?groupId=${chatId}`);
+            const groupResponse = await fetch(`/getGroupMembers?groupId=${chatId}`);            
             if (!groupResponse.ok) throw new Error(`Group members fetch failed: ${groupResponse.status}`);
             
             const groupData = await groupResponse.json();
-            console.log("Group members:", groupData);
+            window.currentChatMembers = groupData.members;
+
+            // Show/hide invite button based on member count
+            const inviteButton = document.getElementById('invite-button');            
+            inviteButton.style.display = groupData.members.length >= 3 ? 'block' : 'none';
+            const membersList = document.getElementById('group-members-list');
+            membersList.innerHTML = ''; // Clear previous members
+            groupData.members.forEach(member => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${member.profile_img || '/default-avatar.png'}" class="small-avatar">
+                    <span>${member.username}</span>
+                `;
+                membersList.appendChild(li);
+            });
         }
 
         // Clear unread badges
@@ -490,11 +505,138 @@ function createChat() {
 }
 window.createChat = createChat;
 
+function openInviteModal() {
+    console.log('Opening invite modal...');
+    // Create the modal if it doesn't already exist
+    let modal = document.getElementById('inviteModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'inviteModal';
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2>Invite Members</h2>
+                <ul id="inviteUserList"></ul>
+                <button id="sendInviteButton">Invite</button>
+                <button id="closeInviteModalButton">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        // Attach event listeners to modal buttons
+        document.getElementById('sendInviteButton').addEventListener('click', sendInvites);
+        document.getElementById('closeInviteModalButton').addEventListener('click', closeInviteModal);
+    }
+
+    // Clear any existing list items
+    const inviteUserList = document.getElementById('inviteUserList');
+    inviteUserList.innerHTML = '';
+
+    // Filter out users already in the group from the full user list
+    // allUsersData is passed from the server in chat.ejs
+    const currentMembers = window.currentChatMembers || [];
+    const potentialInvitees = allUsersData.filter(user => {
+        return !currentMembers.some(member => member.user_id === user.user_id);
+    });
+
+    // Populate the modal with checkboxes for potential invitees
+    potentialInvitees.forEach(user => {
+        const li = document.createElement('li');
+        li.innerHTML = `<label>
+            <input type="checkbox" class="invite-checkbox" value="${user.user_id}">
+            ${user.username}
+        </label>`;
+        inviteUserList.appendChild(li);
+    });
+
+    // Show the modal
+    modal.style.display = 'flex';
+}
+
+function closeInviteModal() {
+    const modal = document.getElementById('inviteModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function sendInvites() {
+    const checkboxes = document.querySelectorAll('.invite-checkbox:checked');
+    const selectedUserIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (!selectedUserIds.length) {
+        alert('Please select users to invite');
+        return;
+    }
+
+    try {
+        const roomId = currentChatId;
+        console.log('Sending invites for room:', roomId, 'to users:', selectedUserIds);
+
+        // Send all invites in parallel
+        const responses = await Promise.all(
+            selectedUserIds.map(userId => 
+                fetch(`/rooms/${roomId}/invite`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                })
+            )
+        );
+
+        // Check for HTTP errors
+        const errors = responses.filter(r => !r.ok);
+        if (errors.length > 0) {
+            throw new Error(`HTTP errors: ${errors.map(e => e.status).join(', ')}`);
+        }
+
+        // Parse all responses
+        const results = await Promise.all(responses.map(r => r.json()));
+        
+        // Check for application errors
+        const failedInvites = results.filter(r => !r.success);
+        if (failedInvites.length > 0) {
+            throw new Error(failedInvites.map(f => f.message).join('\n'));
+        }
+
+        // Refresh members list
+        console.log('Refreshing group members...');
+        const groupResponse = await fetch(`/getGroupMembers?groupId=${roomId}`);
+        if (!groupResponse.ok) throw new Error('Failed to refresh members');
+        
+        const groupData = await groupResponse.json();
+        renderGroupMembers(groupData.members);
+        
+        alert('Successfully invited users!');
+    } catch (error) {
+        console.error('Invite error:', error);
+        alert(`Invitation failed: ${error.message}`);
+    } finally {
+        closeInviteModal();
+    }
+}
+
+function renderGroupMembers(members) {
+    const membersList = document.getElementById('group-members-list');
+    membersList.innerHTML = '';
+    members.forEach(member => {
+        membersList.innerHTML += `
+            <li>
+                <img src="${member.profile_img || '/default-avatar.png'}" 
+                     class="small-avatar">
+                <span>${member.username}</span>
+            </li>
+        `;
+    });
+}
+
 document.getElementById('message').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault(); 
       sendMessage();      
     }
   });
-
+window.openInviteModal = openInviteModal;
+window.closeInviteModal = closeInviteModal;
+window.sendInvites = sendInvites;
 });
