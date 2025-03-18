@@ -55,7 +55,7 @@ async function openChat(chatId, chatType) {
             throw new Error("Invalid messages format");
         }
 
-        // Update UI
+        // Update UI: display messages
         const messagesDiv = document.getElementById("chat-messages");
         messagesDiv.innerHTML = "";
         data.messages.forEach(displayMessage);
@@ -64,43 +64,65 @@ async function openChat(chatId, chatType) {
         messagesDiv.addEventListener('scroll', handleScrollForReadStatus);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-        // Handle group members
-       // In chat.js - inside the openChat function's group handling section
+        // If group chat, fetch group members and update member list
         if (isGroupChat) {
-            const groupResponse = await fetch(`/getGroupMembers?groupId=${chatId}`);            
+            const groupResponse = await fetch(`/getGroupMembers?groupId=${chatId}`);
             if (!groupResponse.ok) throw new Error(`Group members fetch failed: ${groupResponse.status}`);
-            
             const groupData = await groupResponse.json();
             window.currentChatMembers = groupData.members;
 
             // Show/hide invite button based on member count
-            const inviteButton = document.getElementById('invite-button');            
+            const inviteButton = document.getElementById('invite-button');
             inviteButton.style.display = groupData.members.length >= 3 ? 'block' : 'none';
+
+            // Update the group members list
             const membersList = document.getElementById('group-members-list');
-            membersList.innerHTML = ''; // Clear previous members
+            membersList.innerHTML = "";
             groupData.members.forEach(member => {
                 const li = document.createElement('li');
-                li.innerHTML = `
-                    <img src="${member.profile_img || '/default-avatar.png'}" class="small-avatar">
-                    <span>${member.username}</span>
-                `;
+                li.innerHTML = `<img src="${member.profile_img || '/default-avatar.png'}" class="small-avatar">
+                                <span>${member.username}</span>`;
                 membersList.appendChild(li);
             });
         }
+        const chatHeaderDesktop = document.getElementById('chat-username-desktop');
+        const chatHeaderMobile = document.getElementById('chat-username-mobile');        
+  
+        const currentChat = chatListData.find(c => 
+            Number(c.room_id) === Number(chatId)
+        );     
+        if (currentChat) {
+            const newName = currentChat.chat_name || "New Chat";
+            if (chatHeaderDesktop) {
+              chatHeaderDesktop.textContent = newName;
+            }
+            if (chatHeaderMobile) {
+              chatHeaderMobile.textContent = newName;
+            }
+        } else {
+            if (chatHeaderDesktop) {
+              chatHeaderDesktop.textContent = "Select a chat";
+            }
+            if (chatHeaderMobile) {
+              chatHeaderMobile.textContent = "Select a chat";
+            }
+        }
 
-        // Clear unread badges
+        // Clear unread badges from the conversation list
         const chatItem = document.querySelector(`.chat-item[data-room-id="${chatId}"]`);
         if (chatItem) {
             chatItem.classList.remove('unread');
             const badge = chatItem.querySelector('.unread-badge');
             if (badge) badge.remove();
         }
+
     } catch (error) {
         console.error("Error in openChat:", error);
         alert("Failed to load chat. Please try again.");
         goBackToList();
     }
 }
+
 window.openChat = openChat;
 
 function handleScrollForReadStatus() {

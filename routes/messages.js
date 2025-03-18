@@ -59,4 +59,18 @@ router.post('/:roomId/invite', async (req, res) => {
         });
     }
 });
+
+// Make sure direct chats include participants array
+router.get('/getChats', async (req, res) => {
+    try {
+        const chats = await getChatList(req.user.id);
+        res.json(chats.map(chat => ({
+            ...chat,
+            // For direct chats, include participants array
+            participants: chat.type === 'direct' ? getChatParticipants(chat.room_id) : []
+        })));
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 module.exports = router;
