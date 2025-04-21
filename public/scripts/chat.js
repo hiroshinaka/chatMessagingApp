@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize socket connection for real-time messaging
-    const socket = io();
+    const socket = io({
+        reconnection: true,
+        reconnectionAttempts: 5,
+      });
     let currentChatId = null;
     let isGroupChat = false;
     const username = window.username;
@@ -13,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('currentChatType');
         }
     }
+
 /* ===============================================
    Function: openChat(chatId, chatType)
    - Loads messages for the selected chat
@@ -140,20 +144,30 @@ function handleScrollForReadStatus() {
    - Updates the message display and handles unread notifications
 =============================================== */
 socket.on('receiveMessage', (msg) => {
-    displayMessage(msg);
-
-    // If message is for a chat not currently open, update unread count
-    const chatItem = document.querySelector(`.chat-item[data-room-id="${msg.room_id}"]`);
-    if (chatItem && msg.room_id !== currentChatId) {
-        chatItem.classList.add('unread');
-        let badge = chatItem.querySelector('.unread-badge');
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.classList.add('unread-badge');
-            badge.textContent = '1';
-            chatItem.appendChild(badge);
-        } else {
-            badge.textContent = parseInt(badge.textContent) + 1;
+    console.log('Received message:', msg);
+    
+    // Only display if it's for the current chat
+    if (msg.room_id === currentChatId) {
+        displayMessage(msg);
+        updateLastRead();
+        
+        // Scroll to bottom
+        const messagesDiv = document.getElementById("chat-messages");
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } else {
+        // Update unread count for other chats
+        const chatItem = document.querySelector(`.chat-item[data-room-id="${msg.room_id}"]`);
+        if (chatItem) {
+            chatItem.classList.add('unread');
+            let badge = chatItem.querySelector('.unread-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'unread-badge';
+                badge.textContent = '1';
+                chatItem.appendChild(badge);
+            } else {
+                badge.textContent = parseInt(badge.textContent) + 1;
+            }
         }
     }
 });
@@ -166,50 +180,33 @@ socket.on('receiveMessage', (msg) => {
 function displayMessage(msg) {
     console.log('msg.sender:', msg.sender, '| local username:', username);
     const messagesDiv = document.getElementById("chat-messages");
-    const li = document.createElement('div');
+    const messageElement = document.createElement('div');
+    
+    messageElement.className = msg.sender === username ? "my-message" : "other-message";
+    messageElement.dataset.messageId = msg.message_id;
 
-    const date = new Date(msg.sent_datetime);
-    const dateOptions = {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    };
-    const dateTimeString = date.toLocaleString('en-US', dateOptions);
-
-
-    // Apply different styling depending on sender
-    li.className = msg.sender === username ? "my-message" : "other-message";
-    li.dataset.messageId = msg.message_id;
-
-    // Build HTML for message reactions if present
-    let reactionsHtml = '';
-    if (msg.reactions?.length > 0) {
-        reactionsHtml = `<div class="reactions">`;
-        msg.reactions.forEach(reaction => {
-            reactionsHtml += `
-            <span class="emoji-reaction" data-emoji-id="${reaction.emoji_id}">
-                <span class="emoji-character">${reaction.image}</span>
-                <span class="count">${reaction.count}</span>
-            </span>
-        `;
-        });
-        reactionsHtml += '</div>';
+    // Fix date formatting
+    let timestamp;
+    try {
+        // Try parsing ISO string first
+        timestamp = msg.sent_datetime ? new Date(msg.sent_datetime) : new Date();
+        if (isNaN(timestamp.getTime())) {
+            // Fallback to current time if invalid
+            timestamp = new Date();
+        }
+    } catch (e) {
+        timestamp = new Date();
     }
 
-    // Construct message content including a button to trigger reactions
-    li.innerHTML = `
-        <div class="message-content">
-            <strong>${msg.sender}:</strong> ${msg.text}
-            <div class="message-timestamp">${dateTimeString}</div>
-            ${reactionsHtml}
-            <button class="react-button">+</button>
-        </div>
+    messageElement.innerHTML = `
+      <div class="message-content">
+        <strong>${msg.sender}:</strong> ${msg.text}
+        <div class="message-timestamp">${timestamp.toLocaleString()}</div>
+      </div>
     `;
-    messagesDiv.appendChild(li);
+    
+    messagesDiv.appendChild(messageElement);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     if (msg.is_unread) {
         const existingDivider = messagesDiv.querySelector('.unread-divider');
@@ -221,7 +218,7 @@ function displayMessage(msg) {
                 <span class="unread-text">New Messages</span>
                 <div class="unread-line"></div>
             `;
-            messagesDiv.insertBefore(unreadDivider, li);
+            messagesDiv.insertBefore(unreadDivider, messageElement);
         }
     }
 
@@ -374,32 +371,20 @@ function addEmojiReaction(container, data) {
    - Clears the input field and updates the last read message status
 =============================================== */
 function sendMessage() {
-    try {
-        const chatWindow = document.querySelector('.chat-window');
-        const currentRoomId = chatWindow.getAttribute('data-room-id');
-        const currentChatType = chatWindow.getAttribute('data-chat-type');
-        const messageInput = document.getElementById('message');
-        const msgText = messageInput.value.trim();
-
-        if (!msgText || !currentRoomId) return;
-
-        // Save state before sending
-        localStorage.setItem('currentChatId', currentRoomId);
-        localStorage.setItem('currentChatType', currentChatType);
-
-        socket.emit('sendMessage', {
-            room_id: currentRoomId,
-            text: msgText
-        });
-
-        messageInput.value = '';
-        setTimeout(() => {
-            location.reload();
-        }, 300); // Increased delay for better reliability
-    } catch (error) {
-        console.error("Error in sendMessage:", error);
-    }
-}
+    const messageInput = document.getElementById('message');
+    const text = messageInput.value.trim();
+    
+    if (!text || !currentChatId) return;
+  
+    // Emit to server
+    socket.emit('sendMessage', {
+      room_id: currentChatId,
+      text: text
+    });
+  
+    // Clear input but DON'T reload - let Socket.io handle the update
+    messageInput.value = '';
+  }
 
 // Initialize the chat after DOM loads
 init();

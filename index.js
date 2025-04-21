@@ -59,78 +59,155 @@ const sessionMiddleware = session({
 
 app.use(sessionMiddleware);
 
-io.use((socket, next) => {
-    sessionMiddleware(socket.request, {}, next);
-});
+io.engine.use(sessionMiddleware);
+
 //Socket.io connection handling
 io.on('connection', (socket) => {
-    console.log('a user connected');
-
-    socket.on('joinRoom', ({room_id, username}) => {
-        socket.join(room_id);
-        console.log(`${username} joined room ${room_id}`);
-    });
+    console.log(`User connected: ${socket.id}`);
     
-    socket.on("sendMessage", async ({ room_id, text }) => {
+    // Store user data on the socket for easy access
+    socket.user = socket.request.session;
+    
+    // Validate session
+    if (!socket.user?.authenticated) {
+        console.log('Unauthenticated connection attempt');
+        return socket.disconnect(true);
+    }
+
+    // Room joining with validation
+    socket.on('joinRoom', async ({ room_id }) => {
         try {
-          console.log("SendMessage called by user:", socket.request.session.username);
-      
-          // 1. You have the user’s ID from the session
-          const [userResult] = await database.query(
-            "SELECT user_id FROM user WHERE username = ?",
-            [socket.request.session.username]
-          );
-          console.log("User row for session:", userResult);
-          if (!userResult.length) throw new Error("User not found in DB");
-          const user_id = userResult[0].user_id;
-      
-          // 2. Get room_user_id
-          const [roomUser] = await database.query(
-            "SELECT room_user_id FROM room_user WHERE user_id = ? AND room_id = ?",
-            [user_id, room_id]
-          );
-          if (!roomUser.length) throw new Error("User not in this room");
-          const room_user_id = roomUser[0].room_user_id;
-      
-          // 3. Insert the message
-          const [insertResult] = await database.query(
-            "INSERT INTO message (room_user_id, text, sent_datetime) VALUES (?, ?, NOW())",
-            [room_user_id, text]
-          );
-          const messageId = insertResult.insertId;
-          await database.query(
-            `UPDATE room_user 
-             SET last_read = ?
-             WHERE user_id = ? AND room_id = ?`,
-            [messageId, user_id, room_id]
-        );
-      
-          // 4. Fetch the username from the DB
-          const [senderRow] = await database.query(
-            "SELECT username FROM user WHERE user_id = ?",
-            [user_id]
-          );
-          if (!senderRow.length) throw new Error("Sender not found in DB");
-      
-          // 5. Broadcast with a valid sender property
-          const messageData = {
-            message_id: insertResult.insertId,
-            text,
-            sender: senderRow[0].username,  
-            timestamp: new Date().toLocaleTimeString()
-          };
-      
-          io.to(room_id).emit("receiveMessage", messageData);
+            // Verify user has access to this room
+            const [access] = await database.query(
+                `SELECT 1 FROM room_user ru 
+                 JOIN user u ON ru.user_id = u.user_id 
+                 WHERE u.username = ? AND ru.room_id = ?`,
+                [socket.user.username, room_id]
+            );
+            
+            if (!access.length) {
+                throw new Error('Unauthorized room access');
+            }
+            
+            socket.join(room_id);
+            console.log(`${socket.user.username} joined room ${room_id}`);
+            
+            // Notify others in the room (optional)
+            socket.to(room_id).emit('userJoined', {
+                username: socket.user.username,
+                timestamp: new Date()
+            });
+            
         } catch (error) {
-          console.error("Error sending message:", error);
-          socket.emit("messageError", "Failed to send message.");
+            console.error('Join room error:', error);
+            socket.emit('error', 'Failed to join room');
         }
-      });
-    socket.on("disconnect", () => {
-        console.log("User disconnected");
+    });
+
+    // Message handling with improved flow
+    socket.on('sendMessage', async ({ room_id, text }) => {
+        try {
+            if (!text?.trim()) {
+                throw new Error('Empty message');
+            }
+            
+            // 1. Get user ID - use the correct function name
+            const userResult = await db_users.getUser({ user: socket.user.username });
+            if (!userResult || userResult.length === 0) throw new Error('User not found');
+            const user_id = userResult[0].user_id;
+    
+            // 2. Get room_user_id
+            const [roomUser] = await database.query(
+                "SELECT room_user_id FROM room_user WHERE user_id = ? AND room_id = ?",
+                [user_id, room_id]
+            );
+            if (!roomUser.length) throw new Error('User not in room');
+            
+            // 3. Insert message
+            const [result] = await database.query(
+                "INSERT INTO message (room_user_id, text, sent_datetime) VALUES (?, ?, NOW())",
+                [roomUser[0].room_user_id, text]
+            );
+            
+            // 4. Broadcast message
+            io.to(room_id).emit('receiveMessage', {
+                message_id: result.insertId,
+                text,
+                sender: socket.user.username,
+                room_id,
+                timestamp: new Date().toISOString()
+            });
+            
+        } catch (error) {
+            console.error('Message error:', error);
+            socket.emit('messageError', error.message);
+        }
+    });
+    // Reaction handling
+    socket.on('reactToMessage', async ({ message_id, emoji_id }) => {
+        try {
+            // Verify message exists and user has access
+            const [[message]] = await database.query(
+                `SELECT m.message_id, ru.room_id 
+                 FROM message m
+                 JOIN room_user ru ON m.room_user_id = ru.room_user_id
+                 JOIN user u ON ru.user_id = u.user_id
+                 WHERE m.message_id = ? AND u.username = ?`,
+                [message_id, socket.user.username]
+            );
+            
+            if (!message) throw new Error('Message not found');
+            
+            // Toggle reaction
+            const [existing] = await database.query(
+                `SELECT reaction_id FROM messages_reacted 
+                 WHERE message_id = ? AND user_id = (
+                     SELECT user_id FROM user WHERE username = ?
+                 ) AND emoji_id = ?`,
+                [message_id, socket.user.username, emoji_id]
+            );
+            
+            if (existing.length) {
+                await database.query(
+                    'DELETE FROM messages_reacted WHERE reaction_id = ?',
+                    [existing[0].reaction_id]
+                );
+            } else {
+                await database.query(
+                    `INSERT INTO messages_reacted (message_id, user_id, emoji_id)
+                     VALUES (?, (SELECT user_id FROM user WHERE username = ?), ?)`,
+                    [message_id, socket.user.username, emoji_id]
+                );
+            }
+            
+            // Get updated reaction counts
+            const [reactions] = await database.query(
+                `SELECT e.emoji_id, e.image, COUNT(*) as count
+                 FROM messages_reacted mr
+                 JOIN emoji e ON mr.emoji_id = e.emoji_id
+                 WHERE mr.message_id = ?
+                 GROUP BY e.emoji_id, e.image`,
+                [message_id]
+            );
+            
+            // Broadcast update
+            io.to(message.room_id).emit('reactionUpdate', {
+                message_id,
+                reactions
+            });
+            
+        } catch (error) {
+            console.error('Reaction error:', error);
+            socket.emit('reactionError', error.message);
+        }
+    });
+
+    // Cleanup on disconnect
+    socket.on('disconnect', () => {
+        console.log(`User disconnected: ${socket.id}`);
+        // Could implement "last seen" updates here
     });
 });
-
 // Ensure "uploads" folder exists
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });

@@ -125,5 +125,24 @@ async function getChatList(currentUserId) {
     }
 }
 
+// In database/users.js
+async function getUserIdByUsername(username) {
+    const sql = "SELECT user_id FROM user WHERE username = ?";
+    try {
+        const [rows] = await database.query(sql, [username]);
+        return rows;
+    } catch (err) {
+        console.error("Error fetching user:", err);
+        throw err;
+    }
+}
 
-module.exports ={createUser, getUser,getAllUsers, getChatList, getUserByUsername};
+// Make sure it's included in the exports:
+module.exports = {
+    createUser,
+    getUser,
+    getAllUsers,
+    getChatList,
+    getUserByUsername,
+    getUserIdByUsername // Add this line
+};
