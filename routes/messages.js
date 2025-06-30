@@ -4,9 +4,12 @@ const db = require('../databaseConnection');
 const rooms = require('../database/rooms');
 //Send a message
 router.post('/send', async (req, res) => {
-    const {room_user_idm, text} = req.body;
-    try{
-        await db.query('INSERT INTO messages (room_user_id, text) VALUES (?, ?, NOW())', [room_user_id, text]);
+    const { room_user_id, text } = req.body;
+    try {
+        await db.query(
+            'INSERT INTO message (room_user_id, text, sent_datetime) VALUES (?, ?, NOW())',
+            [room_user_id, text]
+        );
         res.status(201).json({ success: true, message: "Message sent!" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
