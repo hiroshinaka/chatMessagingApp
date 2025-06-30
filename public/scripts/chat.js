@@ -48,6 +48,9 @@ async function openChat(chatId, chatType) {
         chatWindow.setAttribute('data-room-id', chatId);
         chatWindow.setAttribute('data-chat-type', chatType);
 
+        // Join the socket.io room for real-time updates
+        socket.emit('joinRoom', { room_id: chatId });
+
         // Fetch messages with error handling
         const response = await fetch(`/getMessages?chatId=${chatId}&isGroup=${isGroupChat}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
